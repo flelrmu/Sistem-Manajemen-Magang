@@ -1,0 +1,59 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    background-color: #F9FAFB;
+    font-family: "Helvetica", "Arial", sans-serif;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none; 
+  }
+
+  @keyframes dash-green {
+    from {
+      stroke-dashoffset: 75; 
+    }
+    to {
+      stroke-dashoffset: 0;
+    }
+  }
+  
+  @keyframes dash-amber {
+    from {
+      stroke-dashoffset: 90; 
+    }
+    to {
+      stroke-dashoffset: -75;
+    }
+  }
+  
+  @keyframes dash-red {
+    from {
+      stroke-dashoffset: 100;
+    }
+    to {
+      stroke-dashoffset: -90;
+    }
+  }
+  
+  .animate-dash-green {
+    animation: dash-green 2s ease-in-out forwards;
+  }
+  
+  .animate-dash-amber {
+    animation: dash-amber 2s ease-in-out forwards;
+  }
+  
+  .animate-dash-red {
+    animation: dash-red 2s ease-in-out forwards;
+  }
+  
+}

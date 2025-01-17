@@ -1,0 +1,487 @@
+{
+	"info": {
+		"_postman_id": "your-generated-id",
+		"name": "Sistem Absensi Magang",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Register Mahasiswa",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/auth/register",
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"email": "mahasiswa@example.com",
+								"password": "Mahasiswa123!",
+								"nim": "2211523001",
+								"nama": "John Doe",
+								"institusi": "Universitas Example",
+								"jenis_kelamin": "Laki-laki",
+								"alamat": "Jl. Example No. 123",
+								"no_telepon": "081234567890",
+								"tanggal_mulai": "2024-01-16",
+								"tanggal_selesai": "2024-03-16",
+								"admin_id": 1
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Login Admin",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/auth/login",
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"email": "admin1@example.com",
+								"password": "Admin123!"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Login Mahasiswa",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/auth/login",
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"email": "mahasiswa@example.com",
+								"password": "Mahasiswa123!"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Check Validation Code",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/auth/check-validation-code",
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"validation_code": "ADMIN1"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Admin",
+			"item": [
+				{
+					"name": "Get Dashboard Stats",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/api/admin/dashboard/stats",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						]
+					}
+				},
+				{
+					"name": "Get All Mahasiswa",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/api/admin/mahasiswa",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"query": [
+							{
+								"key": "status",
+								"value": "aktif"
+							},
+							{
+								"key": "institusi",
+								"value": ""
+							},
+							{
+								"key": "search",
+								"value": ""
+							}
+						]
+					}
+				},
+				{
+					"name": "Create Mahasiswa",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/admin/mahasiswa",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"email": "mahasiswa2@example.com",
+								"password": "Mahasiswa123!",
+								"nim": "2211523002",
+								"nama": "Jane Doe",
+								"institusi": "Universitas Example",
+								"jenis_kelamin": "Perempuan",
+								"alamat": "Jl. Example No. 124",
+								"no_telepon": "081234567891",
+								"tanggal_mulai": "2024-01-16",
+								"tanggal_selesai": "2024-03-16"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Update Mahasiswa Status",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/api/admin/mahasiswa/1/status",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"status": "selesai"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Absensi",
+			"item": [
+				{
+					"name": "Scan QR Code",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/absen/scan",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"qrData": "{encoded QR data}",
+								"latitude": -6.200000,
+								"longitude": 106.816666,
+								"deviceInfo": "Postman Test Device"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				},
+				{
+					"name": "Get Riwayat Absensi",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/api/absen/riwayat",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{mahasiswa_token}}"
+							}
+						],
+						"query": [
+							{
+								"key": "startDate",
+								"value": "2024-01-01"
+							},
+							{
+								"key": "endDate",
+								"value": "2024-01-31"
+							}
+						]
+					}
+				},
+				{
+					"name": "Submit Izin",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/absen/izin",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{mahasiswa_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "tanggal_mulai",
+									"value": "2024-01-20"
+								},
+								{
+									"key": "tanggal_selesai",
+									"value": "2024-01-21"
+								},
+								{
+									"key": "kategori",
+									"value": "Sakit"
+								},
+								{
+									"key": "keterangan",
+									"value": "Demam"
+								},
+								{
+									"key": "file_bukti",
+									"type": "file",
+									"src": "/path/to/surat_dokter.pdf"
+								}
+							]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Logbook",
+			"item": [
+				{
+					"name": "Submit Logbook",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/logbook",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{mahasiswa_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "tanggal",
+									"value": "2024-01-16"
+								},
+								{
+									"key": "aktivitas",
+									"value": "Implementasi fitur login"
+								},
+								{
+									"key": "progress",
+									"value": "80"
+								},
+								{
+									"key": "file_dokumentasi",
+									"type": "file",
+									"src": "/path/to/dokumentasi.pdf"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Get Logbook",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/api/logbook",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{mahasiswa_token}}"
+							}
+						],
+						"query": [
+							{
+								"key": "startDate",
+								"value": "2024-01-01"
+							},
+							{
+								"key": "endDate",
+								"value": "2024-01-31"
+							}
+						]
+					}
+				},
+				{
+					"name": "Update Logbook Status",
+					"request": {
+						"method": "PUT",
+						"url": "{{base_url}}/api/logbook/1/status",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": {
+								"status": "approved",
+								"catatan_admin": "Bagus, lanjutkan",
+								"paraf_admin": "ASF"
+							},
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Laporan",
+			"item": [
+				{
+					"name": "Submit Laporan",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/report",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{mahasiswa_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "versi",
+									"value": "v1.0"
+								},
+								{
+									"key": "progress",
+									"value": "75"
+								},
+								{
+									"key": "file_laporan",
+									"type": "file",
+									"src": "/path/to/laporan.pdf"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Review Laporan",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/api/report/1/review",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{admin_token}}"
+							}
+						],
+						"body": {
+							"mode": "formdata",
+							"formdata": [
+								{
+									"key": "status",
+									"value": "perlu_revisi"
+								},
+								{
+									"key": "feedback",
+									"value": "Perlu perbaikan di bagian metodologi"
+								},
+								{
+									"key": "file_revisi",
+									"type": "file",
+									"src": "/path/to/revisi.pdf"
+								}
+							]
+						}
+					}
+				}
+			]
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "admin_token",
+			"value": "",
+			"type": "string"
+		},
+		{
+			"key": "mahasiswa_token",
+			"value": "",
+			"type": "string"
+		}
+	]
+}

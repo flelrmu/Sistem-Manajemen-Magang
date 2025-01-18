@@ -2,7 +2,6 @@ import React from "react";
 import Logo from "../Elements/Logo/Logo";
 import FormLogin from "../Fragment/FormLogin";
 import Background from "../Elements/Items/bg";
-import { Link } from "react-router-dom";
 import Title from "../Elements/Items/Title";
 
 function AuthLayouts() {
@@ -16,11 +15,6 @@ function AuthLayouts() {
             Selamat datang
           </h2>
           <FormLogin />
-          <div className="mt-6 flex items-center justify-center space-x-4 text-sm">
-            <Link to={"/register"} className="text-red-500 hover:underline">
-              Daftar
-            </Link>
-          </div>
         </div>
       </div>
       <Background />

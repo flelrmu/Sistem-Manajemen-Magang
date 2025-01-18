@@ -34,6 +34,8 @@ const upload = multer({
   }
 });
 
+router.get('/users', adminController.getAdminUsers);
+
 // Protect all routes
 router.use(auth.verifyToken);
 router.use(auth.isAdmin);
@@ -86,5 +88,7 @@ router.put('/mahasiswa/:id/status',
   auth.isResourceOwner,
   adminController.updateMahasiswaStatus
 );
+
+
 
 module.exports = router;

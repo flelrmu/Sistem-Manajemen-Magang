@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Calendar } from "lucide-react";
 import Button from "../Elements/Button/Button";
@@ -12,6 +12,7 @@ function FormRegister() {
   const [error, setError] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -25,13 +26,31 @@ function FormRegister() {
     no_telepon: "",
     tanggal_mulai: "",
     tanggal_selesai: "",
-    admin_id: "1" // Sesuaikan dengan kebutuhan
+    admin_id: "",
   });
+
+  useEffect(() => {
+    const fetchAdminUsers = async () => {
+      try {
+        const response = await axios.get(
+          "http://localhost:3000/api/admin/users"
+        );
+        if (response.data.success) {
+          setAdminUsers(response.data.admins);
+        }
+      } catch (err) {
+        console.error("Error fetching admin users:", err);
+        setError("Gagal memuat daftar admin");
+      }
+    };
+
+    fetchAdminUsers();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    
+
     // Validasi password
     if (formData.password !== formData.konfirmasiPassword) {
       setError("Password dan konfirmasi password tidak cocok");
@@ -44,30 +63,42 @@ function FormRegister() {
       return;
     }
 
+    // Validasi admin
+    if (!formData.admin_id) {
+      setError("Silakan pilih admin pembimbing");
+      return;
+    }
+
     try {
       setLoading(true);
-      
+
       // Format data sesuai dengan yang diharapkan backend
       const registerData = {
         ...formData,
-        tanggal_mulai: startDate.toISOString().split('T')[0],
-        tanggal_selesai: endDate.toISOString().split('T')[0],
+        tanggal_mulai: startDate.toISOString().split("T")[0],
+        tanggal_selesai: endDate.toISOString().split("T")[0],
       };
 
       // Hapus konfirmasiPassword karena tidak dibutuhkan backend
       delete registerData.konfirmasiPassword;
 
       // Kirim request ke backend
-      const response = await axios.post('http://localhost:3000/api/auth/register', registerData);
+      const response = await axios.post(
+        "http://localhost:3000/api/auth/register",
+        registerData
+      );
 
       if (response.data.success) {
         // Redirect ke halaman login
-        navigate('/login');
+        navigate("/login");
       } else {
         setError(response.data.message || "Terjadi kesalahan saat registrasi");
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Terjadi kesalahan saat menghubungi server");
+      setError(
+        err.response?.data?.message ||
+          "Terjadi kesalahan saat menghubungi server"
+      );
     } finally {
       setLoading(false);
     }
@@ -97,6 +128,25 @@ function FormRegister() {
         </div>
 
         <div>
+          <label className="block text-gray-700 mb-2">Pembimbing Lapangan</label>
+          <select
+            className="w-full p-2 border rounded-md shadow-sm bg-white"
+            value={formData.admin_id}
+            onChange={(e) =>
+              setFormData({ ...formData, admin_id: e.target.value })
+            }
+            required
+          >
+            <option value="">Pilih Pembimbing Lapangan</option>
+            {adminUsers.map((admin) => (
+              <option key={admin.id} value={admin.id}>
+                {admin.nama}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
           <label className="block text-gray-700 mb-2">NIM</label>
           <input
             type="text"
@@ -113,7 +163,9 @@ function FormRegister() {
             type="email"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.email}
-            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, email: e.target.value })
+            }
             required
           />
         </div>
@@ -124,7 +176,9 @@ function FormRegister() {
             type="tel"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.no_telepon}
-            onChange={(e) => setFormData({ ...formData, no_telepon: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, no_telepon: e.target.value })
+            }
             required
           />
         </div>
@@ -142,7 +196,11 @@ function FormRegister() {
             <button
               type="button"
               className="bg-gray-100 px-3 border-y border-r rounded-r-md"
-              onClick={() => document.querySelector(".react-datepicker__input-container input").focus()}
+              onClick={() =>
+                document
+                  .querySelector(".react-datepicker__input-container input")
+                  .focus()
+              }
             >
               <Calendar size={20} className="text-gray-500" />
             </button>
@@ -162,7 +220,11 @@ function FormRegister() {
             <button
               type="button"
               className="bg-gray-100 px-3 border-y border-r rounded-r-md"
-              onClick={() => document.querySelector(".react-datepicker__input-container input").focus()}
+              onClick={() =>
+                document
+                  .querySelector(".react-datepicker__input-container input")
+                  .focus()
+              }
             >
               <Calendar size={20} className="text-gray-500" />
             </button>
@@ -177,7 +239,9 @@ function FormRegister() {
             type="text"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.institusi}
-            onChange={(e) => setFormData({ ...formData, institusi: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, institusi: e.target.value })
+            }
             required
           />
         </div>
@@ -187,7 +251,9 @@ function FormRegister() {
           <select
             className="w-full p-2 border rounded-md shadow-sm bg-white"
             value={formData.jenis_kelamin}
-            onChange={(e) => setFormData({ ...formData, jenis_kelamin: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, jenis_kelamin: e.target.value })
+            }
             required
           >
             <option value="">Pilih Jenis Kelamin</option>
@@ -201,7 +267,9 @@ function FormRegister() {
           <textarea
             className="w-full p-2 border rounded-md shadow-sm h-24"
             value={formData.alamat}
-            onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, alamat: e.target.value })
+            }
             required
           />
         </div>
@@ -212,18 +280,24 @@ function FormRegister() {
             type="password"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.password}
-            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, password: e.target.value })
+            }
             required
           />
         </div>
 
         <div>
-          <label className="block text-gray-700 mb-2">Konfirmasi Password</label>
+          <label className="block text-gray-700 mb-2">
+            Konfirmasi Password
+          </label>
           <input
             type="password"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.konfirmasiPassword}
-            onChange={(e) => setFormData({ ...formData, konfirmasiPassword: e.target.value })}
+            onChange={(e) =>
+              setFormData({ ...formData, konfirmasiPassword: e.target.value })
+            }
             required
           />
         </div>

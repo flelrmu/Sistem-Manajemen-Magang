@@ -10,13 +10,13 @@ const FormLogin = () => {
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
   });
 
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     });
     // Clear error when user starts typing
     if (error) setError("");
@@ -28,21 +28,26 @@ const FormLogin = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post('http://localhost:3000/api/auth/login', formData);
-      
+      const response = await axios.post(
+        "http://localhost:3000/api/auth/login",
+        formData
+      );
+
       if (response.data.success) {
         // Store token and user data
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify(response.data.user));
-        
+        localStorage.setItem("token", response.data.token);
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+
         // Set default authorization header for future requests
-        axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
-        
+        axios.defaults.headers.common[
+          "Authorization"
+        ] = `Bearer ${response.data.token}`;
+
         // Redirect based on user role
-        if (response.data.user.role === 'admin') {
-          navigate('/dashboard');
-        } else if (response.data.user.role === 'mahasiswa') {
-          navigate('/dashboardUser');
+        if (response.data.user.role === "admin") {
+          navigate("/dashboard");
+        } else if (response.data.user.role === "mahasiswa") {
+          navigate("/dashboardUser");
         }
       }
     } catch (err) {
@@ -100,8 +105,8 @@ const FormLogin = () => {
             {loading ? "Masuk..." : "Masuk"}
           </button>
 
-          <Link 
-            to="/scan" 
+          <Link
+            to="/scan"
             className="w-full bg-white text-black border border-black py-2 px-4 rounded-md hover:bg-gray-100 transition duration-300 text-center"
           >
             Scan QR Code

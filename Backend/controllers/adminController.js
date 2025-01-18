@@ -1,7 +1,7 @@
-const db = require('../config/database');
-const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
-const qr = require('qrcode');
+const db = require("../config/database");
+const bcrypt = require("bcryptjs");
+const { v4: uuidv4 } = require("uuid");
+const qr = require("qrcode");
 
 const adminController = {
   // Get dashboard statistics
@@ -16,7 +16,7 @@ const adminController = {
       );
 
       // Get today's attendance
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const [todayAttendance] = await db.execute(
         `SELECT COUNT(*) as total FROM absensi a 
          JOIN mahasiswa m ON a.mahasiswa_id = m.id 
@@ -105,14 +105,14 @@ const adminController = {
           pendingLogbooks: pendingLogbooks[0].total,
           weeklyStats,
           logbookStats: logbookStats[0],
-          recentActivities
-        }
+          recentActivities,
+        },
       });
     } catch (error) {
-      console.error('Get dashboard stats error:', error);
+      console.error("Get dashboard stats error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat mengambil data dashboard'
+        message: "Terjadi kesalahan saat mengambil data dashboard",
       });
     }
   },
@@ -122,23 +122,23 @@ const adminController = {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
-      
+
       const adminId = req.user.id;
       const { nama, email } = req.body;
       const photoProfile = req.file ? req.file.filename : null;
 
       // Update user data if email provided
       if (email) {
-        await connection.execute(
-          'UPDATE users SET email = ? WHERE id = ?',
-          [email, adminId]
-        );
+        await connection.execute("UPDATE users SET email = ? WHERE id = ?", [
+          email,
+          adminId,
+        ]);
       }
 
       // Update photo if provided
       if (photoProfile) {
         await connection.execute(
-          'UPDATE users SET photo_profile = ? WHERE id = ?',
+          "UPDATE users SET photo_profile = ? WHERE id = ?",
           [photoProfile, adminId]
         );
       }
@@ -146,7 +146,7 @@ const adminController = {
       // Update admin name if provided
       if (nama) {
         await connection.execute(
-          'UPDATE admin SET nama = ? WHERE user_id = ?',
+          "UPDATE admin SET nama = ? WHERE user_id = ?",
           [nama, adminId]
         );
       }
@@ -154,14 +154,14 @@ const adminController = {
       await connection.commit();
       res.json({
         success: true,
-        message: 'Profile berhasil diupdate'
+        message: "Profile berhasil diupdate",
       });
     } catch (error) {
       await connection.rollback();
-      console.error('Update profile error:', error);
+      console.error("Update profile error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat update profile'
+        message: "Terjadi kesalahan saat update profile",
       });
     } finally {
       connection.release();
@@ -175,19 +175,19 @@ const adminController = {
       const newValidationCode = uuidv4().substring(0, 6).toUpperCase();
 
       await db.execute(
-        'UPDATE admin SET validation_code = ? WHERE user_id = ?',
+        "UPDATE admin SET validation_code = ? WHERE user_id = ?",
         [newValidationCode, adminId]
       );
 
       res.json({
         success: true,
-        validation_code: newValidationCode
+        validation_code: newValidationCode,
       });
     } catch (error) {
-      console.error('Generate validation code error:', error);
+      console.error("Generate validation code error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat generate kode validasi'
+        message: "Terjadi kesalahan saat generate kode validasi",
       });
     }
   },
@@ -197,49 +197,50 @@ const adminController = {
     try {
       const adminId = req.user.id;
       const { status, institusi, periode, search } = req.query;
-      
+
       let query = `
         SELECT m.*, u.email, u.photo_profile
         FROM mahasiswa m
         JOIN users u ON m.user_id = u.id
         WHERE m.admin_id = ?
       `;
-      
+
       const params = [adminId];
 
-      if (status && status !== 'Semua Status') {
-        query += ' AND m.status = ?';
+      if (status && status !== "Semua Status") {
+        query += " AND m.status = ?";
         params.push(status);
       }
 
-      if (institusi && institusi !== 'Semua Institusi') {
-        query += ' AND m.institusi = ?';
+      if (institusi && institusi !== "Semua Institusi") {
+        query += " AND m.institusi = ?";
         params.push(institusi);
       }
 
       if (periode) {
-        query += ' AND (DATE(m.tanggal_mulai) <= ? AND DATE(m.tanggal_selesai) >= ?)';
+        query +=
+          " AND (DATE(m.tanggal_mulai) <= ? AND DATE(m.tanggal_selesai) >= ?)";
         params.push(periode, periode);
       }
 
       if (search) {
-        query += ' AND (m.nama LIKE ? OR m.nim LIKE ?)';
+        query += " AND (m.nama LIKE ? OR m.nim LIKE ?)";
         params.push(`%${search}%`, `%${search}%`);
       }
 
-      query += ' ORDER BY m.created_at DESC';
+      query += " ORDER BY m.created_at DESC";
 
       const [mahasiswa] = await db.execute(query, params);
 
       res.json({
         success: true,
-        data: mahasiswa
+        data: mahasiswa,
       });
     } catch (error) {
-      console.error('Get mahasiswa error:', error);
+      console.error("Get mahasiswa error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat mengambil data mahasiswa'
+        message: "Terjadi kesalahan saat mengambil data mahasiswa",
       });
     }
   },
@@ -260,7 +261,7 @@ const adminController = {
         alamat,
         no_telepon,
         tanggal_mulai,
-        tanggal_selesai
+        tanggal_selesai,
       } = req.body;
       const adminId = req.user.id;
 
@@ -272,7 +273,7 @@ const adminController = {
         nim,
         nama,
         institusi,
-        id: uuidv4()
+        id: uuidv4(),
       });
       const qrCodeImage = await qr.toDataURL(qrContent);
 
@@ -297,23 +298,34 @@ const adminController = {
           tanggal_mulai, tanggal_selesai, qr_code,
           status, sisa_hari
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?)`,
-        [userId, adminId, nim, nama, institusi, jenis_kelamin,
-         alamat, no_telepon, tanggal_mulai, tanggal_selesai,
-         qrCodeImage, sisaHari]
+        [
+          userId,
+          adminId,
+          nim,
+          nama,
+          institusi,
+          jenis_kelamin,
+          alamat,
+          no_telepon,
+          tanggal_mulai,
+          tanggal_selesai,
+          qrCodeImage,
+          sisaHari,
+        ]
       );
 
       await connection.commit();
 
       res.status(201).json({
         success: true,
-        message: 'Akun mahasiswa berhasil dibuat'
+        message: "Akun mahasiswa berhasil dibuat",
       });
     } catch (error) {
       await connection.rollback();
-      console.error('Create mahasiswa error:', error);
+      console.error("Create mahasiswa error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat membuat akun mahasiswa'
+        message: "Terjadi kesalahan saat membuat akun mahasiswa",
       });
     } finally {
       connection.release();
@@ -329,35 +341,61 @@ const adminController = {
 
       // Verify mahasiswa belongs to admin
       const [mahasiswa] = await db.execute(
-        'SELECT * FROM mahasiswa WHERE id = ? AND admin_id = ?',
+        "SELECT * FROM mahasiswa WHERE id = ? AND admin_id = ?",
         [mahasiswaId, adminId]
       );
 
       if (mahasiswa.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'Mahasiswa tidak ditemukan'
+          message: "Mahasiswa tidak ditemukan",
         });
       }
 
       // Update status
-      await db.execute(
-        'UPDATE mahasiswa SET status = ? WHERE id = ?',
-        [status, mahasiswaId]
+      await db.execute("UPDATE mahasiswa SET status = ? WHERE id = ?", [
+        status,
+        mahasiswaId,
+      ]);
+
+      res.json({
+        success: true,
+        message: "Status mahasiswa berhasil diupdate",
+      });
+    } catch (error) {
+      console.error("Update mahasiswa status error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat update status mahasiswa",
+      });
+    }
+  },
+
+  getAdminUsers: async (req, res) => {
+    try {
+      // Hanya mengambil data yang diperlukan untuk registrasi
+      const [admins] = await db.execute(
+        `SELECT a.id, a.nama 
+         FROM admin a 
+         INNER JOIN users u ON a.user_id = u.id 
+         WHERE u.role = 'admin'`
       );
 
       res.json({
         success: true,
-        message: 'Status mahasiswa berhasil diupdate'
+        admins: admins.map((admin) => ({
+          id: admin.id,
+          nama: admin.nama,
+        })),
       });
     } catch (error) {
-      console.error('Update mahasiswa status error:', error);
+      console.error("Get admin list error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat update status mahasiswa'
+        message: "Terjadi kesalahan saat mengambil data admin",
       });
     }
-  }
+  },
 };
 
 module.exports = adminController;

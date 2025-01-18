@@ -2,9 +2,14 @@ import React from "react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { createBrowserRouter, BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AuthProvider } from './components/Context/UserContext';
-import ProtectedRoute from './components/ProtectedRoute';
+import {
+  createBrowserRouter,
+  BrowserRouter,
+  Routes,
+  Route,
+} from "react-router-dom";
+import { AuthProvider } from "./components/Context/UserContext";
+import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./Pages/Auth/login";
 import RegisterPage from "./Pages/Auth/register";
 import ScanQRCodePage from "./Pages/Auth/scan";
@@ -100,6 +105,47 @@ createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/internship"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <InternshipPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/absensi"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <AbsensiPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logbook"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <LogbookPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/laporan"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <LaporanPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          
 
           {/* Protected Mahasiswa Route */}
           <Route

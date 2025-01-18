@@ -2,15 +2,21 @@ import React, { useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import NavAdmin from "../../Elements/Items/NavAdmin";
 import { UserCircle, LogOut, ChevronDown, AlignJustify } from "lucide-react";
+import { useAuth } from "../../Context/UserContext";
 
 const NavbarAdmin = (props) => {
   const { type } = props;
+  const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
   const [toggle, setToggle] = useState(false);
+  const dropdownRef = useRef(null);
 
   const handleToggle = () => {
     setToggle(!toggle);
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   return (
@@ -27,7 +33,11 @@ const NavbarAdmin = (props) => {
               <Navigation type={type} />
             </div>
           </div>
-          <div className="md:flex items-center hidden relative" ref={dropdownRef}>
+
+          <div
+            className="md:flex items-center hidden relative"
+            ref={dropdownRef}
+          >
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center group hover:bg-gray-50 rounded-lg transition-all duration-150 ease-in-out"
@@ -35,18 +45,24 @@ const NavbarAdmin = (props) => {
               <div className="flex items-center gap-3 px-3 py-2">
                 <div className="flex flex-col items-end">
                   <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 duration-500">
-                    Bro
+                    {user?.nama || "Admin"}
                   </span>
                   <span className="text-xs text-gray-500 group-hover:text-gray-700 duration-500">
-                    Internship
+                    {user?.role?.charAt(0).toUpperCase() +
+                      user?.role?.slice(1) || "Admin"}
                   </span>
                 </div>
-                <img
-                  src="/images/avatar.svg"
-                  alt="Profile"
-                  className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200"
-                />
-
+                {user?.photo_profile ? (
+                  <img
+                    src={`http://localhost:3000/uploads/profiles/${user.photo_profile}`}
+                    alt="Profile"
+                    className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 object-cover"
+                  />
+                ) : (
+                  <div className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 bg-gray-200 flex items-center justify-center">
+                    <UserCircle className="h-6 w-6 text-gray-500" />
+                  </div>
+                )}
                 <ChevronDown
                   className={`h-4 w-4 text-gray-500 transition-transform duration-500 ${
                     isDropdownOpen ? "transform rotate-180" : ""
@@ -116,7 +132,9 @@ const NavbarAdmin = (props) => {
             </div>
             <div
               className={`absolute shadow text-end justify-end items-end cursor-pointer mr-[32px] rounded-lg top-20 right-0 bg-white z-50 flex flex-col px-5 pb-5 transition-all duration-500 ease-in-out ${
-                toggle ? "opacity-100 translate-y-0 visible" : "opacity-0 -translate-y-2 invisible"
+                toggle
+                  ? "opacity-100 translate-y-0 visible"
+                  : "opacity-0 -translate-y-2 invisible"
               }`}
             >
               <Navigation type={type} />

@@ -27,17 +27,21 @@ export const AuthProvider = ({ children }) => {
         email,
         password
       });
-
+      
       if (response.data.success) {
         const { token, user } = response.data;
+        const userData = {
+          ...user,
+          photo_profile: user.photo_profile || null
+        };
+        
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(user));
+        localStorage.setItem('user', JSON.stringify(userData));
         
-        // Set axios default header
         axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        setUser(userData);
         
-        setUser(user);
-        return { success: true, user };
+        return { success: true, user: userData };
       }
     } catch (error) {
       throw error.response?.data || { message: 'An error occurred during login' };

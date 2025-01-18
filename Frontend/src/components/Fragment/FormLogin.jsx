@@ -25,29 +25,22 @@ const FormLogin = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
-    setLoading(true);
-
     try {
-      const response = await axios.post(
-        "http://localhost:3000/api/auth/login",
-        formData
-      );
-
+      setLoading(true);
+      const response = await axios.post('http://localhost:3000/api/auth/login', formData);
       if (response.data.success) {
-        // Store token and user data
-        localStorage.setItem("token", response.data.token);
-        localStorage.setItem("user", JSON.stringify(response.data.user));
-
-        // Set default authorization header for future requests
-        axios.defaults.headers.common[
-          "Authorization"
-        ] = `Bearer ${response.data.token}`;
-
-        // Redirect based on user role
-        if (response.data.user.role === "admin") {
-          navigate("/dashboard");
-        } else if (response.data.user.role === "mahasiswa") {
-          navigate("/dashboardUser");
+        // Store complete user data including nama and photo_profile
+        localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', JSON.stringify({
+          ...response.data.user,
+          photo_profile: response.data.user.photo_profile || null
+        }));
+  
+        // Redirect based on role
+        if (response.data.user.role === 'admin') {
+          navigate('/dashboard');
+        } else if (response.data.user.role === 'mahasiswa') {
+          navigate('/dashboardUser');
         }
       }
     } catch (err) {

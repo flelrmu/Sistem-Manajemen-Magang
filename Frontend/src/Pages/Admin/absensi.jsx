@@ -5,7 +5,7 @@ import NavbarAdmin from "../../components/Fragment/AdminFragment/NavbarAdmin";
 function AbsensiPage() {
   return (
     <>
-      <NavbarAdmin />
+      <NavbarAdmin type="absensi" />
       <ManagementAbsen />
     </>
   );

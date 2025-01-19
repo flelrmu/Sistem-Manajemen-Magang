@@ -5,7 +5,7 @@ import ManagementLogbook from "../../components/Layouts/AdminLayouts/ManagementL
 function LogbookPage() {
   return (
     <>
-      <NavbarAdmin />
+      <NavbarAdmin type={"logbook"} />
       <ManagementLogbook />
     </>
   );

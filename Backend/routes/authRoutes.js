@@ -11,6 +11,7 @@ router.post('/check-validation-code', authController.checkValidationCode);
 
 // Protected routes
 router.use(auth.verifyToken);
+router.post('/logout', authController.logout);
 router.post('/update-password', authController.updatePassword);
 
 module.exports = router;

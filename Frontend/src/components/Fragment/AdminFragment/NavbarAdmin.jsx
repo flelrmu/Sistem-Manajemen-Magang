@@ -1,22 +1,27 @@
 import React, { useState, useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import NavAdmin from "../../Elements/Items/NavAdmin";
 import { UserCircle, LogOut, ChevronDown, AlignJustify } from "lucide-react";
 import { useAuth } from "../../Context/UserContext";
 
-const NavbarAdmin = (props) => {
-  const { type } = props;
-  const { user, logout } = useAuth();
+const NavbarAdmin = ({ type }) => {
+  const { user, logout } = useAuth(); // Get user and logout function from context
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [toggle, setToggle] = useState(false);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate(); // Use navigate hook to programmatically navigate
 
   const handleToggle = () => {
     setToggle(!toggle);
   };
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      await logout(); // Call logout from context
+      navigate("/login"); // Redirect to login page after logout
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -25,7 +30,7 @@ const NavbarAdmin = (props) => {
         <div className="flex justify-between h-16">
           <div className="flex h-full items-center">
             <img
-              src="/images/cemenLogo.svg"
+              src="images/cemenLogo.svg"
               alt="Logo"
               className="h-11 w-auto"
             />
@@ -82,7 +87,6 @@ const NavbarAdmin = (props) => {
                 <div className="text-xs font-medium text-gray-400 px-3 py-2">
                   Account Settings
                 </div>
-
                 <Link
                   to="/profile"
                   className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-blue-50 duration-500 transition-colors"
@@ -98,9 +102,7 @@ const NavbarAdmin = (props) => {
                     </span>
                   </div>
                 </Link>
-
                 <div className="h-px bg-gray-100 my-2"></div>
-
                 <button
                   onClick={() => {
                     handleLogout();
@@ -123,21 +125,10 @@ const NavbarAdmin = (props) => {
           </div>
           <div className="md:hidden flex justify-between items-center w-full">
             <div className="bg-white shadow ml-auto px-[12px] py-[12px] rounded-md">
-              <div>
-                <AlignJustify
-                  className="text-3xl cursor-pointer text-gray-500"
-                  onClick={handleToggle}
-                />
-              </div>
-            </div>
-            <div
-              className={`absolute shadow text-end justify-end items-end cursor-pointer mr-[32px] rounded-lg top-20 right-0 bg-white z-50 flex flex-col px-5 pb-5 transition-all duration-500 ease-in-out ${
-                toggle
-                  ? "opacity-100 translate-y-0 visible"
-                  : "opacity-0 -translate-y-2 invisible"
-              }`}
-            >
-              <Navigation type={type} />
+              <AlignJustify
+                onClick={handleToggle}
+                className="h-5 w-5 text-gray-800"
+              />
             </div>
           </div>
         </div>

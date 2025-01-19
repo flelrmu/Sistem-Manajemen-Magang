@@ -5,7 +5,7 @@ import LogbookUser from "../../components/Layouts/UsersLayouts/LogbookUser";
 function LogbookUserPage() {
   return (
     <>
-      <NavbarUser />
+      <NavbarUser type="logbookUser" />
       <LogbookUser />
     </>
   );

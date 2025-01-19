@@ -5,7 +5,7 @@ import AbsensiUser from "../../components/Layouts/UsersLayouts/AbsensiUser";
 function AbsensiUserPage() {
   return (
     <>
-      <NavbarUser />
+      <NavbarUser type="absensiUser" />
       <AbsensiUser />
     </>
   );

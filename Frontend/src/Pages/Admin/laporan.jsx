@@ -5,7 +5,7 @@ import ManagementLaporan from "../../components/Layouts/AdminLayouts/ManagementL
 function LaporanPage() {
   return (
     <>
-      <NavbarAdmin />
+      <NavbarAdmin type={"laporan"} />
       <ManagementLaporan />
     </>
   );

@@ -2,12 +2,7 @@ import React from "react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import {
-  createBrowserRouter,
-  BrowserRouter,
-  Routes,
-  Route,
-} from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./components/Context/UserContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import LoginPage from "./Pages/Auth/login";
@@ -25,78 +20,19 @@ import LaporanUserPage from "./Pages/Users/laporanUser";
 import ProfilePage from "./Pages/Admin/profile";
 import ProfilePageUser from "./Pages/Users/profileUser";
 
-// const Route = createBrowserRouter([
-//   {
-//     path: "/",
-//     element: <LoginPage />,
-//   },
-//   {
-//     path: "/login",
-//     element: <LoginPage />,
-//   },
-//   {
-//     path: "/register",
-//     element: <RegisterPage />,
-//   },
-//   {
-//     path: "/scan",
-//     element: <ScanQRCodePage />,
-//   },
-//   {
-//     path: "/dashboard",
-//     element: <DashboardPage />,
-//   },
-//   {
-//     path: "/internship",
-//     element: <InternshipPage />,
-//   },
-//   {
-//     path: "/absensi",
-//     element: <AbsensiPage />,
-//   },
-//   {
-//     path: "/logbook",
-//     element: <LogbookPage />,
-//   },
-//   {
-//     path: "/laporan",
-//     element: <LaporanPage />,
-//   },
-//   {
-//     path: "/dashboardUser",
-//     element: <DashboardUserPage />,
-//   },
-//   {
-//     path: "/absensiUser",
-//     element: <AbsensiUserPage />,
-//   },
-//   {
-//     path: "/logbookUser",
-//     element: <LogbookUserPage />,
-//   },
-//   {
-//     path: "/laporanUser",
-//     element: <LaporanUserPage />,
-//   },
-//   {
-//     path: "/profile",
-//     element: <ProfilePage />,
-//   },
-//   {
-//     path: "/profileUser",
-//     element: <ProfilePageUser />,
-//   },
-// ]);
-
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    <BrowserRouter>
+    <BrowserRouter basename="/Magang">
       <AuthProvider>
         <Routes>
+          <Route path="/" element={<Navigate to="/login" replace />} />
+
+          {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/scan" element={<ScanQRCodePage />} />
 
-          {/* Protected Admin Route */}
+          {/* Protected Admin Routes */}
           <Route
             path="/dashboard"
             element={
@@ -145,14 +81,45 @@ createRoot(document.getElementById("root")).render(
               </ProtectedRoute>
             }
           />
-          
 
-          {/* Protected Mahasiswa Route */}
+          {/* Protected Mahasiswa Routes */}
           <Route
             path="/dashboardUser"
             element={
               <ProtectedRoute allowedRoles={["mahasiswa"]}>
                 <DashboardUserPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/absensiUser"
+            element={
+              <ProtectedRoute allowedRoles={["mahasiswa"]}>
+                <AbsensiUserPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/logbookUser"
+            element={
+              <ProtectedRoute allowedRoles={["mahasiswa"]}>
+                <LogbookUserPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/laporanUser"
+            element={
+              <ProtectedRoute allowedRoles={["mahasiswa"]}>
+                <LaporanUserPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profileUser"
+            element={
+              <ProtectedRoute allowedRoles={["mahasiswa"]}>
+                <ProfilePageUser />
               </ProtectedRoute>
             }
           />

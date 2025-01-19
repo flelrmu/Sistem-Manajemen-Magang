@@ -5,7 +5,7 @@ import DashboardAdmin from "../../components/Layouts/AdminLayouts/DashboardAdmin
 function DashboardPage() {
   return (
     <>
-      <NavbarAdmin />
+      <NavbarAdmin type={"dashboard"} />
       <DashboardAdmin />
     </>
   );

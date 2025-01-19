@@ -1,30 +1,32 @@
-import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import React from "react";
+import { Navigate, useLocation } from "react-router-dom";
+import { useAuth } from "./Context/UserContext";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
+  const { user, loading } = useAuth(); // Ambil user dari AuthProvider
   const location = useLocation();
-  
-  // Check if user is authenticated
-  const token = localStorage.getItem('token');
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  
-  if (!token) {
-    // Redirect to login if not authenticated
+
+  // Tampilkan loading screen jika context masih memuat
+  if (loading) {
+    return <div>Loading...</div>;
+  }
+
+  // Redirect ke login jika belum login
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
-  // Check if user role is allowed
+
+  // Redirect berdasarkan role jika tidak diizinkan
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    // Redirect to appropriate dashboard based on role
-    if (user.role === 'admin') {
+    if (user.role === "admin") {
       return <Navigate to="/dashboard" replace />;
-    } else if (user.role === 'mahasiswa') {
+    } else if (user.role === "mahasiswa") {
       return <Navigate to="/dashboardUser" replace />;
     }
-    // If role is not recognized, redirect to login
     return <Navigate to="/login" replace />;
   }
-  
+
+  // Render children jika semua validasi lolos
   return children;
 };
 

@@ -5,7 +5,7 @@ import LaporanUser from "../../components/Layouts/UsersLayouts/LaporanUser";
 function LaporanUserPage() {
   return (
     <>
-      <NavbarUser />
+      <NavbarUser type="laporanUser" />
       <LaporanUser />
     </>
   );

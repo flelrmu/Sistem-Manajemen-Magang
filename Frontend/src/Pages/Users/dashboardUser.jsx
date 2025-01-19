@@ -5,7 +5,7 @@ import NavbarUser from "../../components/Fragment/UserFragment/NavbarUser";
 function DashboardUserPage() {
   return (
     <>
-      <NavbarUser />
+      <NavbarUser type="dashboardUser" />
       <DashboardUser />
     </>
   );

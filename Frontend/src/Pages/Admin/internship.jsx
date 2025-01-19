@@ -5,7 +5,7 @@ import NavbarAdmin from "../../components/Fragment/AdminFragment/NavbarAdmin";
 function InternshipPage() {
   return (
     <>
-      <NavbarAdmin />
+      <NavbarAdmin type={"internship"} />
       <Mahasiswa />
     </>
   );

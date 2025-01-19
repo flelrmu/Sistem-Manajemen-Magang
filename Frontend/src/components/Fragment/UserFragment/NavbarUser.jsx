@@ -1,16 +1,27 @@
 import React, { useState, useRef } from "react";
-import { Link } from "react-router-dom";
-import { UserCircle, LogOut, ChevronDown, AlignJustify } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import NavUser from "../../Elements/Items/NavUser";
+import { UserCircle, LogOut, ChevronDown, AlignJustify } from "lucide-react";
+import { useAuth } from "../../Context/UserContext";
 
-const NavbarUser = (props) => {
-  const { type } = props;
+const NavbarUser = ({ type }) => {
+  const { user, logout } = useAuth(); // Get user and logout function from context
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
   const [toggle, setToggle] = useState(false);
+  const dropdownRef = useRef(null);
+  const navigate = useNavigate(); // Use navigate hook to programmatically navigate
 
   const handleToggle = () => {
     setToggle(!toggle);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout(); // Call logout from context
+      navigate("/login"); // Redirect to login page after logout
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   return (
@@ -27,25 +38,35 @@ const NavbarUser = (props) => {
               <Navigation type={type} />
             </div>
           </div>
-          <div className="md:flex items-center hidden relative" ref={dropdownRef}>
+          <div
+            className="md:flex items-center hidden relative"
+            ref={dropdownRef}
+          >
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center group hover:bg-gray-50 rounded-lg transition-all duration-150 ease-in-out"
             >
               <div className="flex items-center gap-3 px-3 py-2">
                 <div className="flex flex-col items-end">
-                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-                    Bro
+                  <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900 duration-500">
+                    {user?.nama || "Mahasiswa"}
                   </span>
-                  <span className="text-xs text-gray-500 group-hover:text-gray-700">
-                    Internship
+                  <span className="text-xs text-gray-500 group-hover:text-gray-700 duration-500">
+                    {user?.role?.charAt(0).toUpperCase() +
+                      user?.role?.slice(1) || "Mahasiswa"}
                   </span>
                 </div>
-                <img
-                  src="/images/avatar.svg"
-                  alt="Profile"
-                  className="h-9 w-9 rounded-full ring-2 ring-gray-100 group-hover:ring-gray-200"
-                />
+                {user?.photo_profile ? (
+                  <img
+                    src={`http://localhost:3000/uploads/profiles/${user.photo_profile}`}
+                    alt="Profile"
+                    className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 object-cover"
+                  />
+                ) : (
+                  <div className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 bg-gray-200 flex items-center justify-center">
+                    <UserCircle className="h-6 w-6 text-gray-500" />
+                  </div>
+                )}
 
                 <ChevronDown
                   className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${

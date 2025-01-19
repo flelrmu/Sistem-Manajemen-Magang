@@ -1,7 +1,7 @@
 const db = require("../config/database");
 const bcrypt = require("bcryptjs");
+const qrcodeUtil = require("../utils/qrcode");
 const { v4: uuidv4 } = require("uuid");
-const qr = require("qrcode");
 
 const adminController = {
   // Get dashboard statistics
@@ -18,24 +18,24 @@ const adminController = {
       // Get today's attendance
       const today = new Date().toISOString().split("T")[0];
       const [todayAttendance] = await db.execute(
-        `SELECT COUNT(*) as total FROM absensi a 
-         JOIN mahasiswa m ON a.mahasiswa_id = m.id 
+        `SELECT COUNT(*) as total FROM absensi a
+         JOIN mahasiswa m ON a.mahasiswa_id = m.id
          WHERE m.admin_id = ? AND DATE(a.tanggal) = ?`,
         [adminId, today]
       );
 
       // Get pending permissions
       const [pendingPermissions] = await db.execute(
-        `SELECT COUNT(*) as total FROM izin i 
-         JOIN mahasiswa m ON i.mahasiswa_id = m.id 
+        `SELECT COUNT(*) as total FROM izin i
+         JOIN mahasiswa m ON i.mahasiswa_id = m.id
          WHERE m.admin_id = ? AND i.status = 'pending'`,
         [adminId]
       );
 
       // Get pending logbooks
       const [pendingLogbooks] = await db.execute(
-        `SELECT COUNT(*) as total FROM logbook l 
-         JOIN mahasiswa m ON l.mahasiswa_id = m.id 
+        `SELECT COUNT(*) as total FROM logbook l
+         JOIN mahasiswa m ON l.mahasiswa_id = m.id
          WHERE m.admin_id = ? AND l.status = 'pending'`,
         [adminId]
       );
@@ -192,53 +192,6 @@ const adminController = {
     }
   },
 
-  // Get mahasiswa list
-  getMahasiswa: async (req, res) => {
-    const connection = await db.getConnection();
-
-    try {
-      const adminId = req.user.admin_id;
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
-      const offset = (page - 1) * limit;
-
-      // Get total count first
-      const [totalResult] = await connection.execute(
-        `SELECT COUNT(*) as total FROM mahasiswa WHERE admin_id = ?`,
-        [adminId]
-      );
-
-      const total = totalResult[0].total;
-
-      // Get paginated mahasiswa data
-      const [mahasiswa] = await connection.execute(
-        `SELECT m.*, u.email, u.photo_profile 
-         FROM mahasiswa m 
-         JOIN users u ON m.user_id = u.id 
-         WHERE m.admin_id = ? 
-         ORDER BY m.created_at DESC 
-         LIMIT ? OFFSET ?`,
-        [adminId, limit, offset]
-      );
-
-      res.json({
-        success: true,
-        mahasiswa,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit),
-      });
-    } catch (error) {
-      console.error("Error fetching mahasiswa:", error);
-      res.status(500).json({
-        success: false,
-        message: "Terjadi kesalahan saat mengambil data mahasiswa",
-      });
-    } finally {
-      connection.release();
-    }
-  },
-
   // Create new mahasiswa
   createMahasiswa: async (req, res) => {
     const connection = await db.getConnection();
@@ -262,15 +215,6 @@ const adminController = {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Generate QR Code
-      const qrContent = JSON.stringify({
-        nim,
-        nama,
-        institusi,
-        id: uuidv4(),
-      });
-      const qrCodeImage = await qr.toDataURL(qrContent);
-
       // Create user account
       const [userResult] = await connection.execute(
         'INSERT INTO users (email, password, role) VALUES (?, ?, "mahasiswa")',
@@ -278,6 +222,13 @@ const adminController = {
       );
 
       const userId = userResult.insertId;
+
+      // Generate QR Code
+      const qrCodePath = await qrcodeUtil.generateMahasiswaQR({
+        id: userId,
+        nim,
+        nama,
+      });
 
       // Calculate remaining days
       const start = new Date(tanggal_mulai);
@@ -288,9 +239,8 @@ const adminController = {
       await connection.execute(
         `INSERT INTO mahasiswa (
           user_id, admin_id, nim, nama, institusi,
-          jenis_kelamin, alamat, no_telepon,
-          tanggal_mulai, tanggal_selesai, qr_code,
-          status, sisa_hari
+          jenis_kelamin, alamat, no_telepon, tanggal_mulai, tanggal_selesai,
+          qr_code, status, sisa_hari
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?)`,
         [
           userId,
@@ -303,7 +253,7 @@ const adminController = {
           no_telepon,
           tanggal_mulai,
           tanggal_selesai,
-          qrCodeImage,
+          qrCodePath,
           sisaHari,
         ]
       );
@@ -317,12 +267,115 @@ const adminController = {
     } catch (error) {
       await connection.rollback();
       console.error("Create mahasiswa error:", error);
+      // Delete QR code if exists
+      if (error.qrCodePath) {
+        await qrcodeUtil.deleteQRCode(error.qrCodePath);
+      }
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat membuat akun mahasiswa",
       });
     } finally {
       connection.release();
+    }
+  },
+
+  // Get all mahasiswa under admin
+  getMahasiswa: async (req, res) => {
+    try {
+      const adminId = req.user.id;
+      const {
+        status,
+        institusi,
+        periode,
+        search,
+        page = 1,
+        limit = 10,
+      } = req.query;
+
+      let query = `
+            SELECT m.*, u.email, u.photo_profile
+            FROM mahasiswa m
+            JOIN users u ON m.user_id = u.id
+            WHERE m.admin_id = ?
+        `;
+
+      const params = [adminId];
+
+      // Add filters
+      if (status && status !== "Semua Status") {
+        query += " AND m.status = ?";
+        params.push(status);
+      }
+      if (institusi && institusi !== "Semua Institusi") {
+        query += " AND m.institusi = ?";
+        params.push(institusi);
+      }
+      if (periode) {
+        query +=
+          " AND (DATE(m.tanggal_mulai) <= ? AND DATE(m.tanggal_selesai) >= ?)";
+        params.push(periode, periode);
+      }
+      if (search) {
+        query += " AND (m.nama LIKE ? OR m.nim LIKE ?)";
+        params.push(`%${search}%`, `%${search}%`);
+      }
+
+      // Get total count
+      const [totalRows] = await db.execute(
+        `SELECT COUNT(*) as total FROM (${query}) as subquery`,
+        params
+      );
+      const total = totalRows[0].total;
+
+      // Add pagination
+      query += " ORDER BY m.created_at DESC LIMIT ? OFFSET ?";
+      const offset = (page - 1) * limit;
+      params.push(Number(limit), offset);
+
+      const [mahasiswa] = await db.execute(query, params);
+
+      res.json({
+        success: true,
+        mahasiswa,
+        total,
+        page: Number(page),
+        totalPages: Math.ceil(total / limit),
+      });
+    } catch (error) {
+      console.error("Get mahasiswa error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil data mahasiswa",
+      });
+    }
+  },
+
+  // Add this new method to adminController
+  getInstitutions: async (req, res) => {
+    try {
+      const adminId = req.user.id;
+
+      // Get unique institutions from mahasiswa table for this admin
+      const [institutions] = await db.execute(
+        `SELECT DISTINCT institusi 
+         FROM mahasiswa 
+         WHERE admin_id = ? 
+         AND institusi IS NOT NULL 
+         ORDER BY institusi`,
+        [adminId]
+      );
+
+      res.json({
+        success: true,
+        institutions: institutions.map((row) => row.institusi),
+      });
+    } catch (error) {
+      console.error("Get institutions error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil data institusi",
+      });
     }
   },
 

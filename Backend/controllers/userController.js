@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const bcrypt = require('bcryptjs');
+const qrcodeUtil = require('../utils/qrcode');
 
 const userController = {
   // Get profile mahasiswa
@@ -24,7 +25,7 @@ const userController = {
 
       // Get statistik kehadiran
       const [statistik] = await db.execute(
-        `SELECT 
+        `SELECT
            COUNT(*) as total_kehadiran,
            COUNT(CASE WHEN status_masuk = 'tepat_waktu' THEN 1 END) as tepat_waktu,
            COUNT(CASE WHEN status_masuk = 'telat' THEN 1 END) as telat,
@@ -36,7 +37,7 @@ const userController = {
 
       // Get logbook stats
       const [logbook] = await db.execute(
-        `SELECT 
+        `SELECT
            COUNT(*) as total_entries,
            COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
            COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved
@@ -68,6 +69,42 @@ const userController = {
       res.status(500).json({
         success: false,
         message: 'Terjadi kesalahan saat mengambil data profile'
+      });
+    }
+  },
+
+  // Get QR Code
+  getQRCode: async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      const [mahasiswa] = await db.execute(
+        'SELECT qr_code FROM mahasiswa WHERE user_id = ?',
+        [userId]
+      );
+
+      if (mahasiswa.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'QR Code tidak ditemukan'
+        });
+      }
+
+      // Return full URL path for QR code
+      const qrCodeUrl = `/uploads/${mahasiswa[0].qr_code}`;
+      
+      res.json({
+        success: true,
+        data: {
+          qr_code: qrCodeUrl
+        }
+      });
+
+    } catch (error) {
+      console.error('Get QR Code error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat mengambil QR Code'
       });
     }
   },
@@ -114,7 +151,7 @@ const userController = {
       if (updateFields.length > 0) {
         await connection.execute(
           `UPDATE mahasiswa 
-           SET ${updateFields.join(', ')} 
+           SET ${updateFields.join(', ')}
            WHERE user_id = ?`,
           [...updateValues, userId]
         );
@@ -139,45 +176,10 @@ const userController = {
     }
   },
 
-  // Get QR Code
-  getQRCode: async (req, res) => {
-    try {
-      const userId = req.user.id;
-
-      const [mahasiswa] = await db.execute(
-        'SELECT qr_code FROM mahasiswa WHERE user_id = ?',
-        [userId]
-      );
-
-      if (mahasiswa.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'QR Code tidak ditemukan'
-        });
-      }
-
-      res.json({
-        success: true,
-        data: {
-          qr_code: mahasiswa[0].qr_code
-        }
-      });
-
-    } catch (error) {
-      console.error('Get QR Code error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Terjadi kesalahan saat mengambil QR Code'
-      });
-    }
-  },
-
   // Get dashboard summary
   getDashboardSummary: async (req, res) => {
     try {
       const userId = req.user.id;
-
-      // Get mahasiswa data
       const [mahasiswa] = await db.execute(
         'SELECT id, nama, sisa_hari FROM mahasiswa WHERE user_id = ?',
         [userId]
@@ -196,15 +198,15 @@ const userController = {
       const today = new Date().toISOString().split('T')[0];
       const [absensi] = await db.execute(
         `SELECT status_kehadiran, waktu_masuk, waktu_keluar, status_masuk
-         FROM absensi 
+         FROM absensi
          WHERE mahasiswa_id = ? AND DATE(tanggal) = ?`,
         [mahasiswaId, today]
       );
 
       // Get total attendance
       const [totalKehadiran] = await db.execute(
-        `SELECT COUNT(*) as total 
-         FROM absensi 
+        `SELECT COUNT(*) as total
+         FROM absensi
          WHERE mahasiswa_id = ? AND status_kehadiran = 'hadir'`,
         [mahasiswaId]
       );
@@ -244,6 +246,57 @@ const userController = {
       res.status(500).json({
         success: false,
         message: 'Terjadi kesalahan saat mengambil data dashboard'
+      });
+    }
+  },
+
+  // Update password
+  updatePassword: async (req, res) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      // Get current user
+      const [users] = await db.execute(
+        'SELECT * FROM users WHERE id = ?',
+        [userId]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User tidak ditemukan'
+        });
+      }
+
+      // Verify old password
+      const validPassword = await bcrypt.compare(oldPassword, users[0].password);
+      if (!validPassword) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password lama tidak sesuai'
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await db.execute(
+        'UPDATE users SET password = ? WHERE id = ?',
+        [hashedPassword, userId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Password berhasil diupdate'
+      });
+
+    } catch (error) {
+      console.error('Update password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat update password'
       });
     }
   }

@@ -56,6 +56,8 @@ router.put('/mahasiswa/:id/status',
   adminController.updateMahasiswaStatus
 );
 
+router.get('/institutions', adminController.getInstitutions);
+
 // Profile management
 router.put('/profile',
   upload.single('photo_profile'),

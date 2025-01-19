@@ -30,7 +30,7 @@ const NavbarUser = ({ type }) => {
         <div className="flex justify-between h-16">
           <div className="flex h-full items-center">
             <img
-              src="/images/cemenLogo.svg"
+              src="images/cemenLogo.svg"
               alt="Logo"
               className="h-11 w-auto"
             />

@@ -194,54 +194,48 @@ const adminController = {
 
   // Get mahasiswa list
   getMahasiswa: async (req, res) => {
+    const connection = await db.getConnection();
+
     try {
-      const adminId = req.user.id;
-      const { status, institusi, periode, search } = req.query;
+      const adminId = req.user.admin_id;
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
 
-      let query = `
-        SELECT m.*, u.email, u.photo_profile
-        FROM mahasiswa m
-        JOIN users u ON m.user_id = u.id
-        WHERE m.admin_id = ?
-      `;
+      // Get total count first
+      const [totalResult] = await connection.execute(
+        `SELECT COUNT(*) as total FROM mahasiswa WHERE admin_id = ?`,
+        [adminId]
+      );
 
-      const params = [adminId];
+      const total = totalResult[0].total;
 
-      if (status && status !== "Semua Status") {
-        query += " AND m.status = ?";
-        params.push(status);
-      }
-
-      if (institusi && institusi !== "Semua Institusi") {
-        query += " AND m.institusi = ?";
-        params.push(institusi);
-      }
-
-      if (periode) {
-        query +=
-          " AND (DATE(m.tanggal_mulai) <= ? AND DATE(m.tanggal_selesai) >= ?)";
-        params.push(periode, periode);
-      }
-
-      if (search) {
-        query += " AND (m.nama LIKE ? OR m.nim LIKE ?)";
-        params.push(`%${search}%`, `%${search}%`);
-      }
-
-      query += " ORDER BY m.created_at DESC";
-
-      const [mahasiswa] = await db.execute(query, params);
+      // Get paginated mahasiswa data
+      const [mahasiswa] = await connection.execute(
+        `SELECT m.*, u.email, u.photo_profile 
+         FROM mahasiswa m 
+         JOIN users u ON m.user_id = u.id 
+         WHERE m.admin_id = ? 
+         ORDER BY m.created_at DESC 
+         LIMIT ? OFFSET ?`,
+        [adminId, limit, offset]
+      );
 
       res.json({
         success: true,
-        data: mahasiswa,
+        mahasiswa,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit),
       });
     } catch (error) {
-      console.error("Get mahasiswa error:", error);
+      console.error("Error fetching mahasiswa:", error);
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat mengambil data mahasiswa",
       });
+    } finally {
+      connection.release();
     }
   },
 

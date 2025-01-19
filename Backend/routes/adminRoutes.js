@@ -34,14 +34,27 @@ const upload = multer({
   }
 });
 
+// Public route for getting admin users list (used in registration)
 router.get('/users', adminController.getAdminUsers);
 
-// Protect all routes
+// Protect all routes below this point
 router.use(auth.verifyToken);
 router.use(auth.isAdmin);
 
 // Dashboard
 router.get('/dashboard/stats', adminController.getDashboardStats);
+
+// Mahasiswa management
+router.get('/mahasiswa', adminController.getMahasiswa);
+router.post('/mahasiswa',
+  validation.validateRegister,
+  validation.handleValidationErrors,
+  adminController.createMahasiswa
+);
+router.put('/mahasiswa/:id/status',
+  auth.isResourceOwner,
+  adminController.updateMahasiswaStatus
+);
 
 // Profile management
 router.put('/profile',
@@ -74,21 +87,5 @@ router.put('/profile',
 
 // Validation code
 router.post('/generate-validation-code', adminController.generateValidationCode);
-
-// Mahasiswa management
-router.get('/mahasiswa', adminController.getMahasiswa);
-
-router.post('/mahasiswa',
-  validation.validateRegister,
-  validation.handleValidationErrors,
-  adminController.createMahasiswa
-);
-
-router.put('/mahasiswa/:id/status',
-  auth.isResourceOwner,
-  adminController.updateMahasiswaStatus
-);
-
-
 
 module.exports = router;

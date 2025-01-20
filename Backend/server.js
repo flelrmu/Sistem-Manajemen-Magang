@@ -84,8 +84,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
-<<<<<<< HEAD
-});
 
 db.getConnection()
   .then(connection => {
@@ -97,6 +95,4 @@ db.getConnection()
   });
 
 module.exports = app;
-=======
 });
->>>>>>> d2eda434d58400acfe6c2047eedf32ea0698e7e0

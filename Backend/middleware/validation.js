@@ -1,4 +1,4 @@
-const { body, param, query, validationResult } = require('express-validator');
+const { body, query, validationResult } = require('express-validator');
 
 const validationMiddleware = {
   // Validate registration input
@@ -40,9 +40,23 @@ const validationMiddleware = {
 
   // Validate logbook input
   validateLogbook: [
-    body('tanggal').isDate().withMessage('Tanggal tidak valid'),
-    body('aktivitas').notEmpty().withMessage('Aktivitas wajib diisi'),
-    body('progress').isInt({ min: 0, max: 100 }).withMessage('Progress harus antara 0-100'),
+    body('tanggal')
+      .notEmpty()
+      .withMessage('Tanggal harus diisi')
+      .isDate()
+      .withMessage('Format tanggal tidak valid'),
+    
+    body('aktivitas')
+      .notEmpty()
+      .withMessage('Aktivitas harus diisi')
+      .isLength({ min: 10, max: 255 })
+      .withMessage('Aktivitas harus antara 10-255 karakter'),
+    
+    body('progress')
+      .notEmpty()
+      .withMessage('Progress harus diisi')
+      .isInt({ min: 0, max: 100 })
+      .withMessage('Progress harus berupa angka 0-100'),
   ],
 
   // Validate laporan input
@@ -63,9 +77,28 @@ const validationMiddleware = {
 
   // Validate date range query
   validateDateRange: [
-    query('startDate').optional().isDate().withMessage('Format tanggal awal tidak valid'),
-    query('endDate').optional().isDate().withMessage('Format tanggal akhir tidak valid'),
+    query('startDate')
+      .optional()
+      .isDate()
+      .withMessage('Format tanggal mulai tidak valid'),
+    
+    query('endDate')
+      .optional()
+      .isDate()
+      .withMessage('Format tanggal selesai tidak valid')
+      .custom((endDate, { req }) => {
+        if (req.query.startDate && endDate < req.query.startDate) {
+          throw new Error('Tanggal selesai harus setelah tanggal mulai');
+        }
+        return true;
+      }),
+    
+    query('status')
+      .optional()
+      .isIn(['pending', 'approved', 'rejected'])
+      .withMessage('Status tidak valid'),
   ],
+
 
   // Validate pagination query
   validatePagination: [
@@ -79,15 +112,11 @@ const validationMiddleware = {
     if (!errors.isEmpty()) {
       return res.status(400).json({
         success: false,
-        errors: errors.array().map(err => ({
-          field: err.param,
-          message: err.msg
-        }))
+        errors: errors.array()
       });
     }
     next();
   },
-
   // Custom validators
   validatePassword: body('password')
     .isLength({ min: 6 })

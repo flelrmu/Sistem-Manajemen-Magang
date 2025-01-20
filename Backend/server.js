@@ -6,6 +6,7 @@ const fs = require('fs');
 const helmet = require('helmet');
 const compression = require('compression');
 const morgan = require('morgan');
+const db = require('./config/database');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -78,5 +79,14 @@ app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });
+
+db.getConnection()
+  .then(connection => {
+    console.log('Database connected successfully');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Error connecting to the database:', err);
+  });
 
 module.exports = app;

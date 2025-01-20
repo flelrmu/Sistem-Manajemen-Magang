@@ -11,7 +11,6 @@ function Mahasiswa() {
           <div className="flex justify-between items-center mb-8">
             <PageTitle>Manajemen Data Intership</PageTitle>
           </div>
-          <FilterIntership />
           <DataIntership />
         </div>
       </div>

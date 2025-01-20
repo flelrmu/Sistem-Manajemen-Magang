@@ -2,10 +2,11 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { HiOutlineMail } from "react-icons/hi";
 import { LuLockKeyhole } from "react-icons/lu";
-import axios from "axios";
+import { useAuth } from "../Context/UserContext"; // Import useAuth
 
 const FormLogin = () => {
   const navigate = useNavigate();
+  const { login } = useAuth(); // Use login from context
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [formData, setFormData] = useState({
@@ -18,7 +19,6 @@ const FormLogin = () => {
       ...formData,
       [e.target.name]: e.target.value,
     });
-    // Clear error when user starts typing
     if (error) setError("");
   };
 
@@ -27,24 +27,17 @@ const FormLogin = () => {
     setError("");
     try {
       setLoading(true);
-      const response = await axios.post('http://localhost:3000/api/auth/login', formData);
-      if (response.data.success) {
-        // Store complete user data including nama and photo_profile
-        localStorage.setItem('token', response.data.token);
-        localStorage.setItem('user', JSON.stringify({
-          ...response.data.user,
-          photo_profile: response.data.user.photo_profile || null
-        }));
-  
-        // Redirect based on role
-        if (response.data.user.role === 'admin') {
-          navigate('/dashboard');
-        } else if (response.data.user.role === 'mahasiswa') {
-          navigate('/dashboardUser');
-        }
+      await login(formData.email, formData.password);
+      
+      // Get user data after successful login
+      const userData = JSON.parse(localStorage.getItem('user'));
+      if (userData.role === 'admin') {
+        navigate('/dashboard');
+      } else if (userData.role === 'mahasiswa') {
+        navigate('/dashboardUser');
       }
     } catch (err) {
-      setError(err.response?.data?.message || "Terjadi kesalahan saat login");
+      setError(err.message || "Terjadi kesalahan saat login");
     } finally {
       setLoading(false);
     }

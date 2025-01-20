@@ -26,17 +26,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan('dev'));
 
+// Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Create upload directories if they don't exist
-const uploadDirs = ['profiles', 'reports', 'logbooks', 'permissions'];
+const uploadDirs = [
+  'uploads/profiles',
+  'uploads/reports', 
+  'uploads/logbooks',
+  'uploads/qrcodes'  // Add qrcodes directory
+];
+
 uploadDirs.forEach(dir => {
-  const dirPath = path.join(__dirname, 'uploads', dir);
+  const dirPath = path.join(__dirname, dir);
   if (!fs.existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
 });
-
-// Serve static files
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -78,6 +84,7 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
+<<<<<<< HEAD
 });
 
 db.getConnection()
@@ -90,3 +97,6 @@ db.getConnection()
   });
 
 module.exports = app;
+=======
+});
+>>>>>>> d2eda434d58400acfe6c2047eedf32ea0698e7e0

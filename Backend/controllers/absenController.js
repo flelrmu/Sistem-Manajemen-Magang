@@ -1,5 +1,6 @@
 const db = require('../config/database');
 const geolib = require('geolib');
+const qrcodeUtil = require('../utils/qrcode');
 
 const absenController = {
   // Scan QR Code untuk absensi
@@ -7,9 +8,16 @@ const absenController = {
     try {
       const { qrData, latitude, longitude, deviceInfo } = req.body;
 
-      // Decode QR data
-      const decodedData = JSON.parse(qrData);
-      const nim = decodedData.nim;
+      // Validasi QR code
+      const validationResult = qrcodeUtil.validateQRContent(qrData);
+      if (!validationResult.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: validationResult.message
+        });
+      }
+
+      const nim = validationResult.data.nim;
 
       // Get mahasiswa data
       const [mahasiswa] = await db.execute(
@@ -49,7 +57,7 @@ const absenController = {
       if (!dalamRadius) {
         return res.status(400).json({
           success: false,
-          message: 'Lokasi di luar radius yang diizinkan'
+          message: `Lokasi di luar radius yang diizinkan (${distance}m dari pusat)`
         });
       }
 
@@ -76,7 +84,7 @@ const absenController = {
         // Create new attendance record
         await db.execute(
           `INSERT INTO absensi (
-            mahasiswa_id, setting_absensi_id, tanggal, 
+            mahasiswa_id, setting_absensi_id, tanggal,
             waktu_masuk, status_masuk, status_kehadiran,
             latitude_scan, longitude_scan, dalam_radius,
             device_info
@@ -127,7 +135,11 @@ const absenController = {
       const { startDate, endDate } = req.query;
 
       let query = `
-        SELECT a.*, s.jam_masuk, s.jam_pulang
+        SELECT 
+          a.*,
+          s.jam_masuk,
+          s.jam_pulang,
+          TIMEDIFF(a.waktu_keluar, a.waktu_masuk) as durasi_kerja
         FROM absensi a
         JOIN setting_absensi s ON a.setting_absensi_id = s.id
         WHERE a.mahasiswa_id = ?
@@ -165,12 +177,14 @@ const absenController = {
       const { bulan, tahun } = req.query;
 
       const [statistik] = await db.execute(
-        `SELECT 
+        `SELECT
           COUNT(*) as total_hari,
           COUNT(CASE WHEN status_masuk = 'tepat_waktu' THEN 1 END) as tepat_waktu,
           COUNT(CASE WHEN status_masuk = 'telat' THEN 1 END) as telat,
           COUNT(CASE WHEN status_kehadiran = 'izin' THEN 1 END) as izin,
-          COUNT(CASE WHEN status_kehadiran = 'alpha' THEN 1 END) as alpha
+          COUNT(CASE WHEN status_kehadiran = 'alpha' THEN 1 END) as alpha,
+          ROUND(AVG(TIME_TO_SEC(TIMEDIFF(waktu_keluar, waktu_masuk)) / 3600), 2) as rata_rata_jam_kerja,
+          COUNT(CASE WHEN waktu_keluar IS NULL AND status_kehadiran = 'hadir' THEN 1 END) as belum_absen_pulang
          FROM absensi
          WHERE mahasiswa_id = ?
          ${bulan ? 'AND MONTH(tanggal) = ?' : ''}
@@ -178,9 +192,28 @@ const absenController = {
         [mahasiswaId, ...(bulan ? [bulan] : []), ...(tahun ? [tahun] : [])]
       );
 
+      // Get detail kehadiran per minggu
+      const [detailMingguan] = await db.execute(
+        `SELECT 
+          WEEK(tanggal) as minggu,
+          COUNT(*) as total_hari,
+          COUNT(CASE WHEN status_masuk = 'tepat_waktu' THEN 1 END) as tepat_waktu,
+          COUNT(CASE WHEN status_masuk = 'telat' THEN 1 END) as telat
+         FROM absensi
+         WHERE mahasiswa_id = ?
+         ${bulan ? 'AND MONTH(tanggal) = ?' : ''}
+         ${tahun ? 'AND YEAR(tanggal) = ?' : ''}
+         GROUP BY WEEK(tanggal)
+         ORDER BY WEEK(tanggal)`,
+        [mahasiswaId, ...(bulan ? [bulan] : []), ...(tahun ? [tahun] : [])]
+      );
+
       res.json({
         success: true,
-        data: statistik[0]
+        data: {
+          summary: statistik[0],
+          detail_mingguan: detailMingguan
+        }
       });
 
     } catch (error) {
@@ -199,16 +232,57 @@ const absenController = {
       const { tanggal_mulai, tanggal_selesai, kategori, keterangan } = req.body;
       const fileBukti = req.file ? req.file.filename : null;
 
+      // Validate dates
+      const startDate = new Date(tanggal_mulai);
+      const endDate = new Date(tanggal_selesai);
+      const today = new Date();
+
+      if (startDate < today) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tanggal mulai tidak boleh kurang dari hari ini'
+        });
+      }
+
+      if (endDate < startDate) {
+        return res.status(400).json({
+          success: false,
+          message: 'Tanggal selesai harus setelah tanggal mulai'
+        });
+      }
+
       // Get admin_id from mahasiswa
       const [mahasiswa] = await db.execute(
         'SELECT admin_id FROM mahasiswa WHERE id = ?',
         [mahasiswaId]
       );
 
+      // Check for overlapping permissions
+      const [existingIzin] = await db.execute(
+        `SELECT id FROM izin 
+         WHERE mahasiswa_id = ? 
+         AND status != 'rejected'
+         AND (
+           (tanggal_mulai BETWEEN ? AND ?) OR
+           (tanggal_selesai BETWEEN ? AND ?) OR
+           (? BETWEEN tanggal_mulai AND tanggal_selesai)
+         )`,
+        [mahasiswaId, tanggal_mulai, tanggal_selesai, 
+         tanggal_mulai, tanggal_selesai, tanggal_mulai]
+      );
+
+      if (existingIzin.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Sudah ada pengajuan izin untuk periode yang sama'
+        });
+      }
+
+      // Insert izin
       await db.execute(
         `INSERT INTO izin (
-          mahasiswa_id, admin_id, tanggal_mulai, 
-          tanggal_selesai, kategori, keterangan, 
+          mahasiswa_id, admin_id, tanggal_mulai,
+          tanggal_selesai, kategori, keterangan,
           file_bukti, status
         ) VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
         [mahasiswaId, mahasiswa[0].admin_id, tanggal_mulai,
@@ -280,7 +354,7 @@ const absenController = {
               `INSERT INTO absensi (
                 mahasiswa_id, setting_absensi_id, tanggal,
                 status_kehadiran, dalam_radius
-              ) VALUES (?, 
+              ) VALUES (?,
                 (SELECT id FROM setting_absensi WHERE is_active = 1 LIMIT 1),
                 ?, 'izin', true
               )`,
@@ -315,13 +389,14 @@ const absenController = {
     }
   },
 
-  // Get riwayat izin
+  // Get riwayat izin (continued...)
   getRiwayatIzin: async (req, res) => {
     try {
       const mahasiswaId = req.params.id || req.user.mahasiswa_id;
       
       const [riwayat] = await db.execute(
-        `SELECT i.*, m.nama as mahasiswa_nama, a.nama as admin_nama
+        `SELECT i.*, m.nama as mahasiswa_nama, a.nama as admin_nama,
+           DATEDIFF(i.tanggal_selesai, i.tanggal_mulai) + 1 as total_hari
          FROM izin i
          JOIN mahasiswa m ON i.mahasiswa_id = m.id
          JOIN admin a ON i.admin_id = a.id
@@ -351,17 +426,20 @@ const absenController = {
       const adminId = req.user.id;
 
       let query = `
-        SELECT 
+        SELECT
           m.nim,
           m.nama,
           m.institusi,
           DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
           TIME_FORMAT(a.waktu_masuk, '%H:%i:%s') as waktu_masuk,
           TIME_FORMAT(a.waktu_keluar, '%H:%i:%s') as waktu_keluar,
+          TIME_FORMAT(TIMEDIFF(a.waktu_keluar, a.waktu_masuk), '%H:%i:%s') as durasi,
           a.status_masuk,
           a.status_kehadiran,
           a.dalam_radius,
-          a.device_info
+          a.device_info,
+          a.latitude_scan,
+          a.longitude_scan
         FROM absensi a
         JOIN mahasiswa m ON a.mahasiswa_id = m.id
         WHERE m.admin_id = ?
@@ -388,9 +466,28 @@ const absenController = {
 
       const [data] = await db.execute(query, params);
 
+      // Calculate summary statistics
+      const summary = {
+        total_records: data.length,
+        tepat_waktu: data.filter(r => r.status_masuk === 'tepat_waktu').length,
+        telat: data.filter(r => r.status_masuk === 'telat').length,
+        hadir: data.filter(r => r.status_kehadiran === 'hadir').length,
+        izin: data.filter(r => r.status_kehadiran === 'izin').length,
+        alpha: data.filter(r => r.status_kehadiran === 'alpha').length,
+        dalam_radius: data.filter(r => r.dalam_radius).length,
+        luar_radius: data.filter(r => !r.dalam_radius).length
+      };
+
       res.json({
         success: true,
-        data: data
+        data: data,
+        summary: summary,
+        filter: {
+          startDate,
+          endDate,
+          mahasiswaId,
+          status
+        }
       });
 
     } catch (error) {
@@ -399,6 +496,93 @@ const absenController = {
         success: false,
         message: 'Terjadi kesalahan saat mengexport data absensi'
       });
+    }
+  },
+
+  // Get status absensi hari ini
+  getStatusAbsensiHariIni: async (req, res) => {
+    try {
+      const mahasiswaId = req.user.mahasiswa_id;
+      const today = new Date().toISOString().split('T')[0];
+
+      const [absensi] = await db.execute(
+        `SELECT a.*, s.jam_masuk, s.jam_pulang
+         FROM absensi a
+         JOIN setting_absensi s ON a.setting_absensi_id = s.id
+         WHERE a.mahasiswa_id = ? AND DATE(a.tanggal) = ?`,
+        [mahasiswaId, today]
+      );
+
+      // Get active settings
+      const [settings] = await db.execute(
+        'SELECT * FROM setting_absensi WHERE is_active = true'
+      );
+
+      res.json({
+        success: true,
+        data: {
+          absensi: absensi[0] || null,
+          setting: settings[0] || null
+        }
+      });
+
+    } catch (error) {
+      console.error('Get status absensi hari ini error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat mengambil status absensi'
+      });
+    }
+  },
+
+  // Update setting absensi
+  updateSettingAbsensi: async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
+      const {
+        jam_masuk,
+        jam_pulang,
+        batas_telat_menit,
+        radius_meter,
+        latitude_pusat,
+        longitude_pusat
+      } = req.body;
+
+      // Deactivate current active setting
+      await connection.execute(
+        'UPDATE setting_absensi SET is_active = false WHERE is_active = true'
+      );
+
+      // Create new setting
+      await connection.execute(
+        `INSERT INTO setting_absensi (
+          jam_masuk, jam_pulang, batas_telat_menit,
+          radius_meter, latitude_pusat, longitude_pusat,
+          is_active, created_by
+        ) VALUES (?, ?, ?, ?, ?, ?, true, ?)`,
+        [jam_masuk, jam_pulang, batas_telat_menit,
+         radius_meter, latitude_pusat, longitude_pusat,
+         req.user.id]
+      );
+
+      await connection.commit();
+
+      res.json({
+        success: true,
+        message: 'Setting absensi berhasil diupdate'
+      });
+
+    } catch (error) {
+      await connection.rollback();
+      console.error('Update setting absensi error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat update setting absensi'
+      });
+    } finally {
+      connection.release();
     }
   }
 };

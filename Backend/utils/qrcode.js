@@ -1,11 +1,27 @@
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const path = require('path');
+const fs = require('fs');
 
 const qrcodeUtil = {
   // Generate QR code for mahasiswa
   generateMahasiswaQR: async (mahasiswaData) => {
     try {
-      // Create payload dengan data mahasiswa dan timestamp
+      // Create qrcodes directory if it doesn't exist
+      const qrPath = path.join(__dirname, '../uploads/qrcodes');
+      if (!fs.existsSync(qrPath)) {
+        fs.mkdirSync(qrPath, { recursive: true });
+      }
+
+      // Remove old QR code if exists
+      const oldFiles = fs.readdirSync(qrPath).filter(file => 
+        file.startsWith(`${mahasiswaData.nim}-`)
+      );
+      oldFiles.forEach(file => {
+        fs.unlinkSync(path.join(qrPath, file));
+      });
+
+      // Create QR payload
       const payload = {
         id: mahasiswaData.id,
         nim: mahasiswaData.nim,
@@ -16,43 +32,45 @@ const qrcodeUtil = {
           .digest('hex')
       };
 
-      // Convert payload ke string
-      const dataString = JSON.stringify(payload);
-
-      // Generate QR code sebagai data URL
-      const qrCodeDataUrl = await QRCode.toDataURL(dataString, {
+      // Generate unique filename
+      const fileName = `${mahasiswaData.nim}-${Date.now()}.png`;
+      const filePath = path.join(qrPath, fileName);
+      
+      // Create QR code file
+      await QRCode.toFile(filePath, JSON.stringify(payload), {
         errorCorrectionLevel: 'H',
-        type: 'image/png',
-        quality: 0.92,
+        type: 'png',
         margin: 1,
+        width: 300,
         color: {
           dark: '#000000',
           light: '#FFFFFF'
         }
       });
 
-      return qrCodeDataUrl;
+      // Return relative path for database storage
+      return `qrcodes/${fileName}`;
+
     } catch (error) {
       console.error('Error generating QR code:', error);
       throw new Error('Failed to generate QR code');
     }
   },
 
-  // Validate QR code content
+  // Validate QR code data
   validateQRContent: (qrData) => {
     try {
-      // Parse QR data
       const data = JSON.parse(qrData);
-
-      // Verify required fields
+      
+      // Check required fields
       if (!data.id || !data.nim || !data.timestamp || !data.hash) {
         return {
           isValid: false,
-          message: 'Invalid QR code format'
+          message: 'Format QR code tidak valid'
         };
       }
 
-      // Verify hash
+      // Validate hash
       const expectedHash = crypto.createHash('sha256')
         .update(`${data.id}${data.nim}${data.timestamp}`)
         .digest('hex');
@@ -60,16 +78,16 @@ const qrcodeUtil = {
       if (data.hash !== expectedHash) {
         return {
           isValid: false,
-          message: 'Invalid QR code signature'
+          message: 'QR code tidak valid'
         };
       }
 
-      // Check if QR code is expired (24 hours)
+      // Check expiration (24 hours)
       const timeDiff = Date.now() - data.timestamp;
       if (timeDiff > 24 * 60 * 60 * 1000) {
         return {
           isValid: false,
-          message: 'QR code has expired'
+          message: 'QR code telah kadaluarsa'
         };
       }
 
@@ -81,38 +99,29 @@ const qrcodeUtil = {
           nama: data.nama
         }
       };
+
     } catch (error) {
       console.error('Error validating QR code:', error);
       return {
         isValid: false,
-        message: 'Invalid QR code data'
+        message: 'Data QR code tidak valid'
       };
     }
   },
 
-  // Generate temporary QR code for one-time use
-  generateTemporaryQR: async (data, expiryMinutes = 5) => {
+  // Delete QR code file
+  deleteQRCode: async (qrCodePath) => {
     try {
-      const payload = {
-        ...data,
-        timestamp: Date.now(),
-        expiry: Date.now() + (expiryMinutes * 60 * 1000),
-        hash: crypto.createHash('sha256')
-          .update(`${JSON.stringify(data)}${Date.now()}`)
-          .digest('hex')
-      };
+      if (!qrCodePath) return false;
 
-      const qrCodeDataUrl = await QRCode.toDataURL(JSON.stringify(payload), {
-        errorCorrectionLevel: 'H',
-        type: 'image/png',
-        quality: 0.92,
-        margin: 1
-      });
-
-      return qrCodeDataUrl;
+      const fullPath = path.join(__dirname, '../uploads', qrCodePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+      return true;
     } catch (error) {
-      console.error('Error generating temporary QR code:', error);
-      throw new Error('Failed to generate temporary QR code');
+      console.error('Error deleting QR code:', error);
+      return false;
     }
   }
 };

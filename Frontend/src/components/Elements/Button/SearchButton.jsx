@@ -5,7 +5,7 @@ function SearchButton(props) {
   return (
     <button
       type={type}
-      className={`${variant} bg-gray-400 hover:bg-gray-600 text-white px-8 py-2 rounded-lg`}
+      className={`${variant} bg-gray-400 hover:bg-gray-600 text-white px-4 py-2 rounded-lg`}
       onClick={() => onClick()}
     >
       {children}

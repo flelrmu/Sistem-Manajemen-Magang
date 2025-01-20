@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const db = require("../config/database");
-const qr = require("qrcode");
+const qrcodeUtil = require("../utils/qrcode");
 const { v4: uuidv4 } = require("uuid");
 
 const authController = {
@@ -28,17 +28,6 @@ const authController = {
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Generate QR Code content (data mahasiswa)
-      const qrContent = JSON.stringify({
-        nim,
-        nama,
-        institusi,
-        id: uuidv4(),
-      });
-
-      // Generate QR Code image
-      const qrCodeImage = await qr.toDataURL(qrContent);
-
       // Insert user
       const [userResult] = await connection.execute(
         "INSERT INTO users (email, password, role, photo_profile) VALUES (?, ?, ?, NULL)",
@@ -47,6 +36,13 @@ const authController = {
 
       const userId = userResult.insertId;
 
+      // Generate QR Code
+      const qrCodePath = await qrcodeUtil.generateMahasiswaQR({
+        id: userId,
+        nim,
+        nama,
+      });
+
       // Calculate sisa_hari
       const start = new Date(tanggal_mulai);
       const end = new Date(tanggal_selesai);
@@ -54,10 +50,11 @@ const authController = {
 
       // Insert mahasiswa
       await connection.execute(
-        `INSERT INTO mahasiswa (user_id, admin_id, nim, nama, institusi, 
-          jenis_kelamin, alamat, no_telepon, tanggal_mulai, tanggal_selesai, 
-          qr_code, status, sisa_hari) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?)`,
+        `INSERT INTO mahasiswa (
+          user_id, admin_id, nim, nama, institusi,
+          jenis_kelamin, alamat, no_telepon, tanggal_mulai, tanggal_selesai,
+          qr_code, status, sisa_hari
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?)`,
         [
           userId,
           admin_id,
@@ -69,7 +66,7 @@ const authController = {
           no_telepon,
           tanggal_mulai,
           tanggal_selesai,
-          qrCodeImage,
+          qrCodePath,
           sisaHari,
         ]
       );
@@ -83,6 +80,10 @@ const authController = {
     } catch (error) {
       await connection.rollback();
       console.error("Register error:", error);
+      // Delete QR code if exists
+      if (error.qrCodePath) {
+        await qrcodeUtil.deleteQRCode(error.qrCodePath);
+      }
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat registrasi",

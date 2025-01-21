@@ -6,6 +6,7 @@ const authMiddleware = {
   verifyToken: async (req, res, next) => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
+      console.log('Token received:', token);
 
       if (!token) {
         return res.status(401).json({
@@ -15,46 +16,44 @@ const authMiddleware = {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Decoded token:', decoded);
       
-      // Get updated user data
-      const [users] = await db.execute(
-        'SELECT * FROM users WHERE id = ?',
-        [decoded.id]
-      );
+      // Get updated user data with role-specific information
+      let userData;
 
-      if (users.length === 0) {
+      if (decoded.role === 'mahasiswa') {
+        const [users] = await db.execute(
+          `SELECT u.*, m.id as mahasiswa_id, m.admin_id, m.nama, m.nim 
+           FROM users u 
+           JOIN mahasiswa m ON u.id = m.user_id 
+           WHERE u.id = ?`,
+          [decoded.id]
+        );
+        userData = users[0];
+      } else if (decoded.role === 'admin') {
+        const [users] = await db.execute(
+          `SELECT u.*, a.id as admin_id, a.nama 
+           FROM users u 
+           JOIN admin a ON u.id = a.user_id 
+           WHERE u.id = ?`,
+          [decoded.id]
+        );
+        userData = users[0];
+      }
+
+      if (!userData) {
         return res.status(401).json({
           success: false,
-          message: 'User tidak valid'
+          message: 'User tidak ditemukan'
         });
       }
 
-      const user = users[0];
-
-      // Get role specific data
-      if (user.role === 'mahasiswa') {
-        const [mahasiswa] = await db.execute(
-          'SELECT * FROM mahasiswa WHERE user_id = ?',
-          [user.id]
-        );
-        if (mahasiswa.length > 0) {
-          user.mahasiswa_id = mahasiswa[0].id;
-          user.admin_id = mahasiswa[0].admin_id;
-        }
-      } else if (user.role === 'admin') {
-        const [admin] = await db.execute(
-          'SELECT * FROM admin WHERE user_id = ?',
-          [user.id]
-        );
-        if (admin.length > 0) {
-          user.admin_id = admin[0].id;
-        }
-      }
-
-      req.user = user;
+      console.log('User data:', userData);
+      req.user = userData;
       next();
 
     } catch (error) {
+      console.error('Auth middleware error:', error);
       if (error.name === 'JsonWebTokenError') {
         return res.status(401).json({
           success: false,
@@ -67,7 +66,6 @@ const authMiddleware = {
           message: 'Token sudah kadaluarsa'
         });
       }
-      console.error('Auth middleware error:', error);
       res.status(500).json({
         success: false,
         message: 'Terjadi kesalahan pada autentikasi'

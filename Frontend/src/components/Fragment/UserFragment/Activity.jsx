@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import { Upload, X } from 'lucide-react';
 
-const ActivityModal = ({ isOpen, onClose }) => {
+const ActivityModal = ({ isOpen, onClose, onSubmit }) => {
   const [formData, setFormData] = useState({
     tanggal: '',
-    deskripsi: '',
+    aktivitas: '',
     progress: '',
-    bukti: null
+    file: null
   });
 
   if (!isOpen) return null;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log('Input changed:', name, value);
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -21,27 +22,39 @@ const ActivityModal = ({ isOpen, onClose }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('Form Data:', formData);
-    onClose();
+    console.log('Submitting form data:', formData);
+    onSubmit(formData);
+    setFormData({
+      tanggal: '',
+      aktivitas: '',
+      progress: '',
+      file: null
+    });
   };
 
-  const handleOutsideClick = (e) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
+  const handleClose = () => {
+    setFormData({
+      tanggal: '',
+      aktivitas: '',
+      progress: '',
+      file: null
+    });
+    onClose();
   };
 
   return (
     <div 
       className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-      onClick={handleOutsideClick}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) handleClose();
+      }}
     >
-      <div className="bg-white rounded-lg w-full max-w-2xl mx-4">
+      <div className="bg-white rounded-lg w-full max-w-2xl mx-4" onClick={e => e.stopPropagation()}>
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">Tambah Aktivitas</h2>
             <button 
-              onClick={onClose}
+              onClick={handleClose}
               className="text-gray-500 hover:text-gray-700"
             >
               <X className="h-6 w-6" />
@@ -54,21 +67,24 @@ const ActivityModal = ({ isOpen, onClose }) => {
               <div className="relative">
                 <input
                   type="date"
-                  name="date"
-                  value={formData.date}
+                  name="tanggal"
+                  value={formData.tanggal}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  required />
+                  required
+                />
               </div>
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Deskripsi</label>
+              <label className="block text-gray-700 font-medium mb-2">Aktivitas</label>
               <textarea
+                name="aktivitas"
                 className="w-full border rounded-lg p-3 h-32 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="Masukkan deskripsi aktivitas..."
-                value={formData.deskripsi}
-                onChange={(e) => setFormData({...formData, deskripsi: e.target.value})}
+                value={formData.aktivitas}
+                onChange={handleInputChange}
+                required
               />
             </div>
 
@@ -76,10 +92,12 @@ const ActivityModal = ({ isOpen, onClose }) => {
               <label className="block text-gray-700 font-medium mb-2">Progress</label>
               <input
                 type="text"
+                name="progress"
                 placeholder="Masukkan progress..."
                 className="w-full border rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 value={formData.progress}
-                onChange={(e) => setFormData({...formData, progress: e.target.value})}
+                onChange={handleInputChange}
+                required
               />
             </div>
 
@@ -90,8 +108,12 @@ const ActivityModal = ({ isOpen, onClose }) => {
                   <Upload className="text-gray-400 mr-2" size={20} />
                   <input
                     type="file"
+                    name="file"
                     className="w-full text-gray-500 focus:outline-none"
-                    onChange={(e) => setFormData({...formData, bukti: e.target.files[0]})}
+                    onChange={(e) => setFormData(prev => ({
+                      ...prev,
+                      file: e.target.files[0]
+                    }))}
                   />
                 </div>
               </div>
@@ -100,7 +122,7 @@ const ActivityModal = ({ isOpen, onClose }) => {
             <div className="flex justify-end gap-3">
               <button
                 type="button"
-                onClick={onClose}
+                onClick={handleClose}
                 className="px-6 py-2 border rounded-lg text-gray-700 hover:bg-gray-50 font-medium"
               >
                 Batal

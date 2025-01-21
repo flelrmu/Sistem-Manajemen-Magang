@@ -5,6 +5,7 @@ const path = require('path');
 const adminController = require('../controllers/adminController');
 const auth = require('../middleware/auth');
 const validation = require('../middleware/validation');
+const absenController = require('../controllers/absenController');
 
 // Configure multer storage
 const storage = multer.diskStorage({
@@ -57,6 +58,7 @@ router.put('/mahasiswa/:id/status',
 );
 
 router.get('/institutions', adminController.getInstitutions);
+
 
 // Profile management
 router.put('/profile',

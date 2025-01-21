@@ -15,7 +15,6 @@ function ManagementAbsen() {
           <GreenButton>Export Absensi</GreenButton>
         </div>
         <AbsensiCard />
-        <FilterAbsensi />
         <DataAbsensi />
       </div>
     </div>

@@ -112,7 +112,9 @@ const authController = {
 
       // Get user by email
       const [users] = await db.execute(
+
         'SELECT * FROM users WHERE email = ?',
+
         [email]
       );
 
@@ -138,7 +140,7 @@ const authController = {
       let additionalData = {};
       if (user.role === 'mahasiswa') {
         const [mahasiswa] = await db.execute(
-          'SELECT * FROM mahasiswa WHERE user_id = ?',
+          "SELECT id as mahasiswa_id, admin_id, nama, nim, institusi, status FROM mahasiswa WHERE user_id = ?",
           [user.id]
         );
         if (mahasiswa.length > 0) {
@@ -146,7 +148,7 @@ const authController = {
         }
       } else if (user.role === 'admin') {
         const [admin] = await db.execute(
-          'SELECT * FROM admin WHERE user_id = ?',
+          "SELECT id as admin_id, nama, validation_code FROM admin WHERE user_id = ?",
           [user.id]
         );
         if (admin.length > 0) {
@@ -155,6 +157,14 @@ const authController = {
       }
 
       // Generate JWT token
+      const tokenData = {
+        id: user.id,
+        role: user.role,
+        email: user.email,
+        ...additionalData,
+      };
+      console.log('Token data:', tokenData);
+
       const token = jwt.sign(
         {
           id: user.id,
@@ -251,7 +261,7 @@ const authController = {
     }
   },
 
-  // Check validation code untuk akses scan QR
+  // Check validation code
   checkValidationCode: async (req, res) => {
     try {
       const { validation_code } = req.body;
@@ -281,10 +291,9 @@ const authController = {
     }
   },
 
-  // Add this function to authController object
+  // Logout
   logout: (req, res) => {
     try {
-      // Tidak ada operasi tambahan yang diperlukan untuk JWT (misalnya, blacklist token jika diperlukan)
       res.status(200).json({
         success: true,
         message: "Logout berhasil",
@@ -294,6 +303,60 @@ const authController = {
       res.status(500).json({
         success: false,
         message: "Logout gagal",
+      });
+    }
+  },
+
+
+  // Update password
+  updatePassword: async (req, res) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      // Get current user
+      const [users] = await db.execute(
+        "SELECT * FROM users WHERE id = ?",
+        [userId]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User tidak ditemukan",
+        });
+      }
+
+      // Verify old password
+      const validPassword = await bcrypt.compare(
+        oldPassword,
+        users[0].password
+      );
+      if (!validPassword) {
+        return res.status(401).json({
+          success: false,
+          message: "Password lama tidak sesuai",
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await db.execute(
+        "UPDATE users SET password = ? WHERE id = ?",
+        [hashedPassword, userId]
+      );
+
+      res.json({
+        success: true,
+        message: "Password berhasil diupdate",
+      });
+    } catch (error) {
+      console.error("Update password error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat update password",
       });
     }
   },

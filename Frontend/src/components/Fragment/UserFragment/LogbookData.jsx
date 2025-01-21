@@ -1,17 +1,9 @@
 import React from "react";
 import { ArrowUpDown } from "lucide-react";
 
-function LogbookData() {
-  const logbookData = [
-    {
-      tanggal: "13 Jan 2024",
-      aktivitas:
-        "Implementasi fitur login dan autentikasi menggunakan JWT Token Progress: 100%",
-      dokumentasi: "View",
-      status: "Approved",
-      paraf: "Paraf",
-    },
-  ];
+function LogbookData({ logbooks }) {
+  console.log('Logbooks di komponen:', logbooks); 
+  
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="overflow-x-auto">
@@ -26,26 +18,44 @@ function LogbookData() {
             </tr>
           </thead>
           <tbody>
-            {logbookData.map((item, index) => (
-              <tr key={index} className="border-b">
-                <td className="py-4 px-4">{item.tanggal}</td>
-                <td className="py-4 px-4 max-w-md">{item.aktivitas}</td>
+            {logbooks?.map((item, index) => (
+              <tr key={item.id || index} className="border-b">
                 <td className="py-4 px-4">
-                  <button className="text-blue-600 hover:underline flex items-center">
-                    <ArrowUpDown className="mr-1 h-4 w-4" />
-                    {item.dokumentasi}
-                  </button>
+                  {new Date(item.tanggal).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </td>
+                <td className="py-4 px-4 max-w-md">
+                  {item.aktivitas} Progress: {item.progress}%
                 </td>
                 <td className="py-4 px-4">
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                    {item.status}
+                  {item.file_dokumentasi && (
+                    <button className="text-blue-600 hover:underline flex items-center">
+                      <ArrowUpDown className="mr-1 h-4 w-4" />
+                      View
+                    </button>
+                  )}
+                </td>
+                <td className="py-4 px-4">
+                  <span className={`px-3 py-1 rounded-full text-sm ${
+                    item.status === 'approved' 
+                      ? 'bg-green-100 text-green-800'
+                      : item.status === 'pending'
+                      ? 'bg-orange-100 text-orange-800'
+                      : 'bg-red-100 text-red-800'
+                  }`}>
+                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
                   </span>
                 </td>
                 <td className="py-4 px-4">
-                  <button className="text-gray-600 hover:text-gray-800 flex items-center">
-                    <ArrowUpDown className="mr-1 h-4 w-4" />
-                    {item.paraf}
-                  </button>
+                  {item.paraf_admin ? (
+                    <button className="text-gray-600 hover:text-gray-800 flex items-center">
+                      <ArrowUpDown className="mr-1 h-4 w-4" />
+                      Paraf
+                    </button>
+                  ) : "-"}
                 </td>
               </tr>
             ))}
@@ -53,7 +63,9 @@ function LogbookData() {
         </table>
       </div>
       <div className="mt-4 flex justify-between items-center">
-        <p className="text-sm text-gray-500">Showing 1 to 10 of 20 entries</p>
+        <p className="text-sm text-gray-500">
+          Showing {logbooks?.length ? '1' : '0'} to {logbooks?.length} of {logbooks?.length} entries
+        </p>
         <div className="flex space-x-2">
           <button className="px-4 py-2 border rounded text-gray-600">
             Previous

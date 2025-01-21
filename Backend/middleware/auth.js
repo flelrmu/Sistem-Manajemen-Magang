@@ -14,17 +14,35 @@ const authMiddleware = {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Decoded token:', decoded);
       
-      // Get updated user data
-      const [users] = await db.execute(
-        'SELECT * FROM users WHERE id = ?',
-        [decoded.id]
-      );
+      // Get updated user data with role-specific information
+      let userData;
 
-      if (users.length === 0) {
+      if (decoded.role === 'mahasiswa') {
+        const [users] = await db.execute(
+          `SELECT u.*, m.id as mahasiswa_id, m.admin_id, m.nama, m.nim 
+           FROM users u 
+           JOIN mahasiswa m ON u.id = m.user_id 
+           WHERE u.id = ?`,
+          [decoded.id]
+        );
+        userData = users[0];
+      } else if (decoded.role === 'admin') {
+        const [users] = await db.execute(
+          `SELECT u.*, a.id as admin_id, a.nama 
+           FROM users u 
+           JOIN admin a ON u.id = a.user_id 
+           WHERE u.id = ?`,
+          [decoded.id]
+        );
+        userData = users[0];
+      }
+
+      if (!userData) {
         return res.status(401).json({
           success: false,
-          message: 'User tidak valid'
+          message: 'User tidak ditemukan'
         });
       }
 
@@ -64,6 +82,7 @@ const authMiddleware = {
       console.log('verifyToken - User:', req.user);
       next();
     } catch (error) {
+      console.error('Auth middleware error:', error);
       if (error.name === 'JsonWebTokenError') {
         return res.status(401).json({
           success: false,
@@ -76,7 +95,6 @@ const authMiddleware = {
           message: 'Token sudah kadaluarsa'
         });
       }
-      console.error('Auth middleware error:', error);
       res.status(500).json({
         success: false,
         message: 'Terjadi kesalahan pada autentikasi'

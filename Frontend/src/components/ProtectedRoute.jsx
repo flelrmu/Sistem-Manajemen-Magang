@@ -3,7 +3,7 @@ import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "./Context/UserContext";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
-  const { user, loading } = useAuth(); // Ambil user dari AuthProvider
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   // Tampilkan loading screen jika context masih memuat
@@ -18,15 +18,17 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
   // Redirect berdasarkan role jika tidak diizinkan
   if (allowedRoles && !allowedRoles.includes(user.role)) {
+    // Redirect admin ke dashboard admin
     if (user.role === "admin") {
       return <Navigate to="/dashboard" replace />;
-    } else if (user.role === "mahasiswa") {
+    }
+    // Redirect mahasiswa ke dashboard mahasiswa
+    else if (user.role === "mahasiswa") {
       return <Navigate to="/dashboardUser" replace />;
     }
     return <Navigate to="/login" replace />;
   }
 
-  // Render children jika semua validasi lolos
   return children;
 };
 

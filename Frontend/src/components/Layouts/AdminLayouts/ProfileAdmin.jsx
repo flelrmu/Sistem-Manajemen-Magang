@@ -1,13 +1,15 @@
-import React from 'react';
-import FormProfile from '../../Fragment/AdminFragment/FormProfile';
-import PageTitle from '../../Elements/Items/PageTitle';
+import React from "react";
+import FormProfile from "../../Fragment/AdminFragment/FormProfile";
+import PageTitle from "../../Elements/Items/PageTitle";
 
 const ProfileAdmin = () => {
   return (
     <div className="h-auto relative px-8 pt-[70px]">
-      <div className="max-w-7xl x-auto py-6">
-        <PageTitle>Profile Settings</PageTitle>
-        <FormProfile/>
+      <div className="max-w-7xl mx-auto py-6">
+        <PageTitle>Pengaturan Profile</PageTitle>
+        <div className="mt-6">
+          <FormProfile />
+        </div>
       </div>
     </div>
   );

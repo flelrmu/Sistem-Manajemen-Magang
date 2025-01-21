@@ -152,9 +152,25 @@ const adminController = {
       }
 
       await connection.commit();
+
+      // Fetch updated profile data
+      const [updatedAdmin] = await db.execute(
+        `SELECT u.email, u.photo_profile, a.nama
+         FROM users u
+         LEFT JOIN admin a ON u.id = a.user_id
+         WHERE u.id = ?`,
+        [adminId]
+      );
+
+      // Add full URL for photo_profile
+      if (updatedAdmin[0].photo_profile) {
+        updatedAdmin[0].photo_profile = `${req.protocol}://${req.get('host')}/uploads/profiles/${updatedAdmin[0].photo_profile}`;
+      }
+
       res.json({
         success: true,
         message: "Profile berhasil diupdate",
+        data: updatedAdmin[0]
       });
     } catch (error) {
       await connection.rollback();
@@ -440,6 +456,71 @@ const adminController = {
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat mengambil data admin",
+      });
+    }
+  },
+
+  // Update admin password
+  updatePassword: async (req, res) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      const adminId = req.user.id;
+
+      if (!oldPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password lama dan baru harus diisi'
+        });
+      }
+
+      // Get current admin
+      const [admins] = await db.execute(
+        'SELECT * FROM users WHERE id = ?',
+        [adminId]
+      );
+
+      if (admins.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Admin tidak ditemukan'
+        });
+      }
+
+      // Verify old password
+      const validPassword = await bcrypt.compare(oldPassword, admins[0].password);
+      if (!validPassword) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password lama tidak sesuai'
+        });
+      }
+
+      // Validate new password
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password baru minimal 6 karakter'
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await db.execute(
+        'UPDATE users SET password = ? WHERE id = ?',
+        [hashedPassword, adminId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Password berhasil diupdate'
+      });
+    } catch (error) {
+      console.error('Update password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat update password'
       });
     }
   },

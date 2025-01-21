@@ -10,13 +10,13 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const token = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
-
+    
     if (token && savedUser) {
-      setUser(JSON.parse(savedUser)); // Set user state from localStorage
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     }
-
-    setLoading(false); // Finish loading after checking localStorage
+    setLoading(false);
   }, []);
 
   const login = async (email, password) => {
@@ -25,55 +25,71 @@ export const AuthProvider = ({ children }) => {
         "http://localhost:3000/api/auth/login",
         { email, password }
       );
-
       if (response.data.success) {
         const { token, user } = response.data;
-        const userData = { ...user, photo_profile: user.photo_profile || null };
-
-        localStorage.setItem("token", token); // Save token to localStorage
-        localStorage.setItem("user", JSON.stringify(userData)); // Save user data
-
-        setUser(userData); // Immediately update the state
+        // Perbaiki URL foto profil
+        const userData = {
+          ...user,
+          photo_profile: user.photo_profile ? 
+            `http://localhost:3000//uploads/profiles/${user.photo_profile}` : null
+        };
+        
+        localStorage.setItem("token", token);
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        return response.data;
       }
     } catch (error) {
       throw error.response?.data || { message: "Login error" };
     }
   };
 
-  const logout = async () => {
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    delete axios.defaults.headers.common["Authorization"];
+    setUser(null);
+  };
+
+  const updateProfile = async (formData) => {
     try {
-      const token = localStorage.getItem("token"); // Get token from localStorage
-      if (!token) throw new Error("Token tidak ditemukan");
-
-      // Send logout request with Authorization header
-      await axios.post(
-        "http://localhost:3000/api/auth/logout",
-        null,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+      const endpoint = user.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
+      const response = await axios.put(`http://localhost:3000${endpoint}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
         }
-      );
+      });
 
-      // Clear token and user from localStorage and axios headers
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      delete axios.defaults.headers.common["Authorization"];
-      setUser(null); // Clear the user state
+      if (response.data.success) {
+        const updatedUser = { ...user, ...response.data.data };
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+      }
+      return response.data;
     } catch (error) {
-      console.error("Logout error:", error.response?.data || error.message);
-
-      // Ensure state is cleared even if logout request fails
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-      delete axios.defaults.headers.common["Authorization"];
-      setUser(null);
+      throw error.response?.data || { message: "Update profile error" };
     }
   };
 
-  const value = { user, login, logout, loading };
+  const updatePassword = async (passwordData) => {
+    try {
+      const endpoint = user.role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
+      const response = await axios.put(`http://localhost:3000${endpoint}`, passwordData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Update password error" };
+    }
+  };
+
+  const value = {
+    user,
+    loading,
+    login,
+    logout,
+    updateProfile,
+    updatePassword
+  };
 
   return (
     <UserContext.Provider value={value}>

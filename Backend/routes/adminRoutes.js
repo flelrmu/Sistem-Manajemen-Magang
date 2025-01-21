@@ -87,6 +87,9 @@ router.put('/profile',
   adminController.updateProfile
 );
 
+// Update admin password
+router.put('/profile/password', auth.verifyToken, adminController.updatePassword);
+
 // Validation code
 router.post('/generate-validation-code', adminController.generateValidationCode);
 

@@ -5,7 +5,10 @@ const { validateRegister, validateLogin, handleValidationErrors } = require('../
 const auth = require('../middleware/auth');
 
 // Public routes
-router.post('/register', validateRegister, handleValidationErrors, authController.register);
+router.post('/register', (req, res, next) => {
+  console.log('Register request body:', req.body); // Add logging
+  next();
+}, validateRegister, handleValidationErrors, authController.register);
 router.post('/login', validateLogin, handleValidationErrors, authController.login);
 router.post('/check-validation-code', authController.checkValidationCode);
 

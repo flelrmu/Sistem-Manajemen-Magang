@@ -13,14 +13,14 @@ const LogbookUser = () => {
       <div className="max-w-7xl mx-auto py-6">
         <div className="flex justify-between items-center mb-8">
           <PageTitle>Logbook Aktivitas</PageTitle>
-          <div className="space-x-4">
+          <div className="space-x-4 items-center flex">
             <button
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg inline-flex items-center"
             >
               <span className="text-xl mr-2">+</span> Tambah Aktivitas
             </button>
-            <button className="bg-green-600 text-white px-6 py-2 rounded-lg inline-flex items-center">
+            <button className="bg-green-600 text-white px-6 py-[10px] rounded-lg inline-flex items-center">
               <ArrowUpDown className="mr-2 h-5 w-5" /> Download PDF
             </button>
           </div>

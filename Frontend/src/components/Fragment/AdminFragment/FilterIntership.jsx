@@ -11,12 +11,12 @@ function FilterInternship({ onFilterChange }) {
     status: "Semua Status",
     institusi: "Semua Institusi",
     periode: null,
-    search: ""
+    search: "",
   });
-  
+
   // State for institution options from database
   const [institutions, setInstitutions] = useState([]);
-  
+
   // Status options
   const statusOptions = ["Semua Status", "aktif", "selesai", "berhenti"];
 
@@ -24,7 +24,9 @@ function FilterInternship({ onFilterChange }) {
   useEffect(() => {
     const fetchInstitutions = async () => {
       try {
-        const response = await axios.get("http://localhost:3000/api/admin/institutions");
+        const response = await axios.get(
+          "http://localhost:3000/api/admin/institutions"
+        );
         setInstitutions(["Semua Institusi", ...response.data.institutions]);
       } catch (error) {
         console.error("Error fetching institutions:", error);
@@ -46,13 +48,15 @@ function FilterInternship({ onFilterChange }) {
         {/* Status Filter */}
         <div>
           <label className="block text-gray-600 mb-2">Status</label>
-          <select 
+          <select
             className="w-full border rounded-md p-2"
             value={filters.status}
             onChange={(e) => handleFilterChange("status", e.target.value)}
           >
-            {statusOptions.map(status => (
-              <option key={status} value={status}>{status}</option>
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
             ))}
           </select>
         </div>
@@ -60,13 +64,15 @@ function FilterInternship({ onFilterChange }) {
         {/* Institution Filter */}
         <div>
           <label className="block text-gray-600 mb-2">Institusi</label>
-          <select 
+          <select
             className="w-full border rounded-md p-2"
             value={filters.institusi}
             onChange={(e) => handleFilterChange("institusi", e.target.value)}
           >
-            {institutions.map(institution => (
-              <option key={institution} value={institution}>{institution}</option>
+            {institutions.map((institution) => (
+              <option key={institution} value={institution}>
+                {institution}
+              </option>
             ))}
           </select>
         </div>
@@ -84,7 +90,11 @@ function FilterInternship({ onFilterChange }) {
             />
             <button
               className="bg-gray-100 px-3 border-y border-r rounded-r-md"
-              onClick={() => document.querySelector(".react-datepicker__input-container input").focus()}
+              onClick={() =>
+                document
+                  .querySelector(".react-datepicker__input-container input")
+                  .focus()
+              }
             >
               <Calendar size={20} className="text-gray-500" />
             </button>

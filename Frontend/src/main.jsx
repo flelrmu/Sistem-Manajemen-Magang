@@ -1,10 +1,10 @@
 import React from "react";
-import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "./index.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./components/Context/UserContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+
+// Import pages
 import LoginPage from "./Pages/Auth/login";
 import RegisterPage from "./Pages/Auth/register";
 import ScanQRCodePage from "./Pages/Auth/scan";
@@ -20,13 +20,15 @@ import LaporanUserPage from "./Pages/Users/laporanUser";
 import ProfilePage from "./Pages/Admin/profile";
 import ProfilePageUser from "./Pages/Users/profileUser";
 
+import "./index.css";
+
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
+  <React.StrictMode>
     <BrowserRouter basename="/Magang">
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />
-
+          
           {/* Public Routes */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -126,5 +128,5 @@ createRoot(document.getElementById("root")).render(
         </Routes>
       </AuthProvider>
     </BrowserRouter>
-  </StrictMode>
+  </React.StrictMode>
 );

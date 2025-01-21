@@ -6,8 +6,6 @@ const authMiddleware = {
   verifyToken: async (req, res, next) => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
-      console.log('Token received:', token);
-
       if (!token) {
         return res.status(401).json({
           success: false,
@@ -48,10 +46,41 @@ const authMiddleware = {
         });
       }
 
-      console.log('User data:', userData);
-      req.user = userData;
-      next();
+      const user = users[0];
 
+      // Get role specific data
+      if (user.role === 'mahasiswa') {
+        const [mahasiswa] = await db.execute(
+          'SELECT * FROM mahasiswa WHERE user_id = ?',
+          [user.id]
+        );
+        if (mahasiswa.length > 0) {
+          user.mahasiswa_id = mahasiswa[0].id;
+          user.admin_id = mahasiswa[0].admin_id;
+        } else {
+          return res.status(401).json({
+            success: false,
+            message: 'Data mahasiswa tidak ditemukan'
+          });
+        }
+      } else if (user.role === 'admin') {
+        const [admin] = await db.execute(
+          'SELECT * FROM admin WHERE user_id = ?',
+          [user.id]
+        );
+        if (admin.length > 0) {
+          user.admin_id = admin[0].id;
+        } else {
+          return res.status(401).json({
+            success: false,
+            message: 'Data admin tidak ditemukan'
+          });
+        }
+      }
+
+      req.user = user;
+      console.log('verifyToken - User:', req.user);
+      next();
     } catch (error) {
       console.error('Auth middleware error:', error);
       if (error.name === 'JsonWebTokenError') {
@@ -75,7 +104,7 @@ const authMiddleware = {
 
   // Check if user is admin
   isAdmin: (req, res, next) => {
-    if (req.user.role !== 'admin') {
+    if (!req.user || req.user.role !== 'admin' || !req.user.admin_id) {
       return res.status(403).json({
         success: false,
         message: 'Akses ditolak. Hanya admin yang diizinkan.'
@@ -86,7 +115,7 @@ const authMiddleware = {
 
   // Check if user is mahasiswa
   isMahasiswa: (req, res, next) => {
-    if (req.user.role !== 'mahasiswa') {
+    if (!req.user || req.user.role !== 'mahasiswa' || !req.user.mahasiswa_id) {
       return res.status(403).json({
         success: false,
         message: 'Akses ditolak. Hanya mahasiswa yang diizinkan.'
@@ -100,7 +129,7 @@ const authMiddleware = {
     try {
       const adminId = req.user.admin_id;
       const resourceId = req.params.id;
-      const resource = req.baseUrl.split('/')[2]; // e.g., /api/mahasiswa -> mahasiswa
+      const resource = req.baseUrl.split('/')[2];
 
       let query;
       switch (resource) {
@@ -124,7 +153,6 @@ const authMiddleware = {
       }
 
       const [result] = await db.execute(query, [resourceId, adminId]);
-
       if (result.length === 0) {
         return res.status(403).json({
           success: false,
@@ -133,7 +161,6 @@ const authMiddleware = {
       }
 
       next();
-
     } catch (error) {
       console.error('Resource owner check error:', error);
       res.status(500).json({

@@ -6,6 +6,7 @@ const fs = require('fs');
 const userController = require('../controllers/userController');
 const auth = require('../middleware/auth');
 const validation = require('../middleware/validation');
+const uploadMiddleware = require('../middleware/upload'); // Ensure this import is correct
 
 // Ensure upload directory exists
 const uploadDir = 'uploads/profiles';
@@ -65,25 +66,60 @@ const handleUploadError = (error, req, res, next) => {
   next();
 };
 
-// Protect all routes
+// Protect all routes with token verification
 router.use(auth.verifyToken);
-router.use(auth.isMahasiswa);
 
 // Profile routes
-router.get('/profile', userController.getProfile);
+router.get('/profile', (req, res, next) => {
+  console.log('GET /profile - User:', req.user);
+  next();
+}, userController.getProfile);
 
 router.put('/profile',
+  (req, res, next) => {
+    console.log('PUT /profile - User:', req.user);
+    next();
+  },
+  auth.isMahasiswa,  // Verify mahasiswa role
   upload.single('photo_profile'),
   handleUploadError,
+  uploadMiddleware.deleteOldFile,  // Ensure this middleware is used correctly
   validation.validateUpdateProfile,
   validation.handleValidationErrors,
   userController.updateProfile
 );
 
-// QR Code route
-router.get('/qrcode', userController.getQRCode);
+// Password update
+router.put('/password',
+  (req, res, next) => {
+    console.log('PUT /password - User:', req.user);
+    next();
+  },
+  auth.isMahasiswa,  // Verify mahasiswa role
+  validation.validatePassword,
+  validation.handleValidationErrors,
+  userController.updatePassword
+);
 
-// Dashboard route
-router.get('/dashboard/summary', userController.getDashboardSummary);
+// Update password
+router.put('/profile/password', auth.verifyToken, userController.updatePassword);
+
+// QR Code
+router.get('/qrcode', 
+  auth.isMahasiswa,
+  userController.getQRCode
+);
+
+// Dashboard
+router.get('/dashboard/summary', 
+  auth.isMahasiswa,
+  userController.getDashboardSummary
+);
+
+// Get recent activities
+router.get('/recent-activities', auth.verifyToken, userController.getRecentActivities);
+
+// Get status magang
+router.get('/status-magang', auth.verifyToken, userController.getStatusMagang);
 
 module.exports = router;

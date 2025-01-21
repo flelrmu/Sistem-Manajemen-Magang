@@ -11,7 +11,7 @@ const storage = multer.diskStorage({
     let uploadPath = 'uploads/';
     
     switch (resource) {
-      case 'profiles':
+      case 'user':
         uploadPath += 'profiles';
         break;
       case 'reports':
@@ -35,14 +35,37 @@ const storage = multer.diskStorage({
     cb(null, uploadPath);
   },
   filename: function (req, file, cb) {
+    // Generate nama file unik
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const ext = path.extname(file.originalname);
+    cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
   }
 });
+
+// Filter file yang diizinkan
+const fileFilter = (req, file, cb) => {
+  // Tentukan tipe file yang diizinkan berdasarkan route
+  const resource = req.baseUrl.split('/')[2];
+  const allowedTypes = {
+    'user': ['image/jpeg', 'image/png'],
+    'reports': ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    'logbooks': ['image/jpeg', 'image/png', 'application/pdf'],
+    'permissions': ['application/pdf', 'image/jpeg', 'image/png']
+  };
+
+  const fileTypes = allowedTypes[resource] || allowedTypes['user'];
+  
+  if (fileTypes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error(`Tipe file tidak diizinkan. Tipe yang diizinkan: ${fileTypes.join(', ')}`), false);
+  }
+};
 
 // Konfigurasi multer
 const upload = multer({
   storage: storage,
+  fileFilter: fileFilter,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB
   }
@@ -68,9 +91,9 @@ const uploadMiddleware = {
     }
     
     if (err) {
-      return res.status(500).json({
+      return res.status(400).json({
         success: false,
-        message: 'Terjadi kesalahan saat upload file'
+        message: err.message || 'Terjadi kesalahan saat upload file'
       });
     }
     
@@ -82,14 +105,14 @@ const uploadMiddleware = {
     try {
       if (!req.file) return next();
 
-      const resource = req.baseUrl.split('/')[2]; // e.g., /api/profiles -> profiles
       const userId = req.user.id;
-
+      const resource = req.baseUrl.split('/')[2];
+      
       let query;
       let folder;
 
       switch (resource) {
-        case 'profiles':
+        case 'user':
           query = 'SELECT photo_profile FROM users WHERE id = ?';
           folder = 'profiles';
           break;
@@ -110,10 +133,13 @@ const uploadMiddleware = {
       }
 
       const [files] = await db.execute(query, [userId]);
+      
       if (files.length > 0) {
-        const oldFile = files[0].photo_profile || files[0].file_path || 
-                       files[0].file_dokumentasi || files[0].file_bukti;
-                       
+        const oldFile = files[0].photo_profile || 
+                       files[0].file_path || 
+                       files[0].file_dokumentasi || 
+                       files[0].file_bukti;
+
         if (oldFile) {
           const filePath = path.join(__dirname, '../uploads', folder, oldFile);
           if (fs.existsSync(filePath)) {
@@ -140,10 +166,9 @@ const uploadMiddleware = {
       
       return res.status(400).json({
         success: false,
-        message: 'Tipe file tidak diizinkan'
+        message: `Tipe file tidak diizinkan. Tipe yang diizinkan: ${allowedTypes.join(', ')}`
       });
     }
-
     next();
   },
 
@@ -161,7 +186,6 @@ const uploadMiddleware = {
         fs.mkdirSync(dir, { recursive: true });
       }
     });
-
     next();
   }
 };

@@ -25,6 +25,17 @@ const authController = {
         admin_id,
       } = req.body;
 
+      console.log('Register data:', req.body); // Add logging
+
+      // Validasi input
+      if (!email || !password || !nim || !nama || !institusi || !jenis_kelamin || !alamat || !no_telepon || !tanggal_mulai || !tanggal_selesai || !admin_id) {
+        console.log('Validation failed:', req.body); // Add logging
+        return res.status(400).json({
+          success: false,
+          message: 'Semua field harus diisi'
+        });
+      }
+
       // Hash password
       const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -93,21 +104,24 @@ const authController = {
     }
   },
 
-  // Login user
+
+  // Login
   login: async (req, res) => {
     try {
       const { email, password } = req.body;
 
       // Get user by email
       const [users] = await db.execute(
-        "SELECT * FROM users WHERE email = ?",
+
+        'SELECT * FROM users WHERE email = ?',
+
         [email]
       );
 
       if (users.length === 0) {
         return res.status(401).json({
           success: false,
-          message: "Email atau password salah",
+          message: 'Email atau password salah'
         });
       }
 
@@ -118,13 +132,13 @@ const authController = {
       if (!validPassword) {
         return res.status(401).json({
           success: false,
-          message: "Email atau password salah",
+          message: 'Email atau password salah'
         });
       }
 
-      // Get additional user data based on role
+      // Get additional user data
       let additionalData = {};
-      if (user.role === "mahasiswa") {
+      if (user.role === 'mahasiswa') {
         const [mahasiswa] = await db.execute(
           "SELECT id as mahasiswa_id, admin_id, nama, nim, institusi, status FROM mahasiswa WHERE user_id = ?",
           [user.id]
@@ -132,7 +146,7 @@ const authController = {
         if (mahasiswa.length > 0) {
           additionalData = mahasiswa[0];
         }
-      } else if (user.role === "admin") {
+      } else if (user.role === 'admin') {
         const [admin] = await db.execute(
           "SELECT id as admin_id, nama, validation_code FROM admin WHERE user_id = ?",
           [user.id]
@@ -152,7 +166,13 @@ const authController = {
       console.log('Token data:', tokenData);
 
       const token = jwt.sign(
-        tokenData,
+        {
+          id: user.id,
+          role: user.role,
+          email: user.email,
+          ...(user.role === 'mahasiswa' ? { mahasiswa_id: additionalData.id } : {}),
+          ...(user.role === 'admin' ? { admin_id: additionalData.id } : {})
+        },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRES_IN }
       );
@@ -164,14 +184,79 @@ const authController = {
           id: user.id,
           email: user.email,
           role: user.role,
-          ...additionalData,
-        },
+          ...additionalData
+        }
       });
     } catch (error) {
-      console.error("Login error:", error);
+      console.error('Login error:', error);
       res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat login",
+        message: 'Terjadi kesalahan saat login'
+      });
+    }
+  },
+
+  // Update password
+  updatePassword: async (req, res) => {
+    try {
+      const { oldPassword, newPassword } = req.body;
+      const userId = req.user.id;
+
+      if (!oldPassword || !newPassword) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password lama dan baru harus diisi'
+        });
+      }
+
+      // Get current user
+      const [users] = await db.execute(
+        'SELECT * FROM users WHERE id = ?',
+        [userId]
+      );
+
+      if (users.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'User tidak ditemukan'
+        });
+      }
+
+      // Verify old password
+      const validPassword = await bcrypt.compare(oldPassword, users[0].password);
+      if (!validPassword) {
+        return res.status(401).json({
+          success: false,
+          message: 'Password lama tidak sesuai'
+        });
+      }
+
+      // Validate new password
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          success: false,
+          message: 'Password baru minimal 6 karakter'
+        });
+      }
+
+      // Hash new password
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      // Update password
+      await db.execute(
+        'UPDATE users SET password = ? WHERE id = ?',
+        [hashedPassword, userId]
+      );
+
+      res.json({
+        success: true,
+        message: 'Password berhasil diupdate'
+      });
+    } catch (error) {
+      console.error('Update password error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat update password'
       });
     }
   },
@@ -221,6 +306,7 @@ const authController = {
       });
     }
   },
+
 
   // Update password
   updatePassword: async (req, res) => {

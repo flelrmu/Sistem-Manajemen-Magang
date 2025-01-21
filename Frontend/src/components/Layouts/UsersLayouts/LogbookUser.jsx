@@ -141,8 +141,9 @@ const LogbookUser = () => {
       <div className="max-w-7xl mx-auto py-6">
         <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           <PageTitle>Logbook Aktivitas</PageTitle>
-          <div className="space-x-4">
-             <button
+
+          <div className="space-x-4 items-center flex">
+            <button
               onClick={() => setIsModalOpen(true)}
               className="bg-blue-600 text-white px-6 py-2 rounded-lg inline-flex items-center"
             >
@@ -152,6 +153,7 @@ const LogbookUser = () => {
               onClick={handleDownloadPDF}
               className="bg-green-600 text-white px-6 py-2 rounded-lg inline-flex items-center"
             >
+
               <ArrowUpDown className="mr-2 h-5 w-5" /> Download PDF
             </button>
           </div>

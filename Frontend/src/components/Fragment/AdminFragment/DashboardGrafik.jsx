@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from 'react';
 import {
   LineChart,
   Line,
@@ -8,30 +8,67 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts";
+import axios from 'axios';
 
-const weeklyData = [
-  { day: "Senin", hadir: 21, izin: 2, absen: 1 },
-  { day: "Selasa", hadir: 20, izin: 3, absen: 1 },
-  { day: "Rabu", hadir: 22, izin: 2, absen: 0 },
-  { day: "Kamis", hadir: 23, izin: 1, absen: 0 },
-  { day: "Jumat", hadir: 20, izin: 3, absen: 1 },
-];
+const DashboardGrafik = () => {
+  const [attendanceData, setAttendanceData] = useState([]);
 
-function DashboardGrafik() {
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      try {
+        // Get current date
+        const today = new Date();
+        const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+        
+        const response = await axios.get('http://localhost:3000/api/absen/statistics', {
+          params: {
+            startDate: lastWeek.toISOString().split('T')[0],
+            endDate: today.toISOString().split('T')[0]
+          }
+        });
+
+        if (response.data.success) {
+          const formattedData = response.data.data.map(day => ({
+            day: new Date(day.date).toLocaleDateString('id-ID', { weekday: 'long' }),
+            hadir: day.hadir || 0,
+            izin: day.izin || 0,
+            alpha: day.alpha || 0,
+            total: (day.hadir || 0) + (day.izin || 0) + (day.alpha || 0)
+          }));
+          setAttendanceData(formattedData);
+        }
+      } catch (error) {
+        console.error('Error fetching attendance data:', error);
+      }
+    };
+
+    fetchAttendanceData();
+    // Refresh data every 5 minutes
+    const interval = setInterval(fetchAttendanceData, 300000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-medium mb-4">Grafik Kehadiran Mingguan</h3>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={weeklyData}>
+            <LineChart data={attendanceData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="day" />
               <YAxis />
               <Tooltip />
-              <Line type="monotone" dataKey="hadir" stroke="#10B981" />
-              <Line type="monotone" dataKey="izin" stroke="#F59E0B" />
-              <Line type="monotone" dataKey="absen" stroke="#EF4444" />
+              <Line type="monotone" dataKey="hadir" stroke="#10B981" name="Hadir" />
+              <Line type="monotone" dataKey="izin" stroke="#F59E0B" name="Izin" />
+              <Line type="monotone" dataKey="alpha" stroke="#EF4444" name="Alpha" />
+              <Line 
+                type="monotone" 
+                dataKey="total" 
+                stroke="#6366F1" 
+                name="Total" 
+                strokeDasharray="5 5"
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -46,11 +83,16 @@ function DashboardGrafik() {
           </div>
           <div className="flex items-center">
             <div className="w-3 h-3 bg-red-500 rounded-full mr-2"></div>
-            <span className="text-sm text-gray-600">Absen</span>
+            <span className="text-sm text-gray-600">Alpha</span>
+          </div>
+          <div className="flex items-center">
+            <div className="w-3 h-3 bg-indigo-500 rounded-full mr-2"></div>
+            <span className="text-sm text-gray-600">Total</span>
           </div>
         </div>
       </div>
-
+      
+      {/* Keep existing Status Logbook section */}
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-medium mb-4">Status Logbook</h3>
         <div className="flex justify-center items-center h-64">
@@ -100,6 +142,6 @@ function DashboardGrafik() {
       </div>
     </div>
   );
-}
+};
 
 export default DashboardGrafik;

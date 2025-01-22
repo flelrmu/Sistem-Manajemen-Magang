@@ -85,7 +85,7 @@ function FilterInternship({ onFilterChange }) {
               selected={filters.periode}
               onChange={(date) => handleFilterChange("periode", date)}
               placeholderText="Pilih tanggal"
-              className="w-full border rounded-l-md p-2 pr-36"
+              className="w-full border rounded-l-md p-2 pr-44"
               dateFormat="dd/MM/yyyy"
             />
             <button

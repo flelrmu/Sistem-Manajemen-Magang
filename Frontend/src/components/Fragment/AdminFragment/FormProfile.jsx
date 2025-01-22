@@ -1,135 +1,160 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Camera } from "lucide-react";
-import { useAuth } from "../../Context/UserContext";
+import Button from "../../Elements/Button/Button";
+import axiosInstance from "../../../../../Backend/utils/axios";
 
-function FormProfile() {
-  const { user, updateProfile, updatePassword } = useAuth();
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
-  
+const FormProfile = () => {
   const [profileData, setProfileData] = useState({
-    nama: user?.nama || "",
-    email: user?.email || "",
-    photo: null,
-    photoPreview: user?.photo_profile ? `http://localhost:3000/uploads/profiles/${user.photo_profile}` : null
-  });
-
-  const [passwordData, setPasswordData] = useState({
+    fullName: "",
+    email: "",
     oldPassword: "",
     newPassword: "",
-    konfirmasiPassword: ""
+    confirmPassword: "",
   });
 
-  const handlePhotoChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setProfileData(prev => ({
-        ...prev,
-        photo: file,
-        photoPreview: URL.createObjectURL(file)
-      }));
-    }
-  };
+  const [parafUpload, setParafUpload] = useState({
+    selectedFile: null,
+    previewUrl: null,
+    error: null,
+    loading: false,
+    success: false
+  });
 
-  const handleProfileUpdate = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage({ type: '', text: '' });
+  // Fetch initial profile data including paraf image
+  useEffect(() => {
+    const fetchProfileData = async () => {
+      try {
+        const response = await axiosInstance.get('/api/admin/profile');
+        if (response.data.success) {
+          setProfileData(prev => ({
+            ...prev,
+            fullName: response.data.data.nama,
+            email: response.data.data.email
+          }));
+          
+          // If there's an existing paraf, create preview URL
+          if (response.data.data.paraf_image) {
+            setParafUpload(prev => ({
+              ...prev,
+              previewUrl: `${process.env.REACT_APP_API_URL}/${response.data.data.paraf_image}`
+            }));
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+      }
+    };
 
-    try {
-      const formData = new FormData();
-      if (profileData.nama !== user.nama) formData.append('nama', profileData.nama);
-      if (profileData.email !== user.email) formData.append('email', profileData.email);
-      if (profileData.photo) formData.append('photo_profile', profileData.photo);
+    fetchProfileData();
+  }, []);
 
-      const response = await updateProfile(formData);
-      setMessage({ type: 'success', text: response.message });
-    } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Terjadi kesalahan saat update profile' 
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePasswordUpdate = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage({ type: '', text: '' });
-
-    // Validate password match
-    if (passwordData.newPassword !== passwordData.konfirmasiPassword) {
-      setMessage({ type: 'error', text: 'Konfirmasi password tidak sesuai' });
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await updatePassword({
-        oldPassword: passwordData.oldPassword,
-        newPassword: passwordData.newPassword
-      });
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file && file.type.startsWith('image/')) {
+      // Create preview URL
+      const previewUrl = URL.createObjectURL(file);
       
-      setMessage({ type: 'success', text: response.message });
-      setPasswordData({ oldPassword: '', newPassword: '', konfirmasiPassword: '' });
-    } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Terjadi kesalahan saat update password' 
+      setParafUpload({
+        selectedFile: file,
+        previewUrl: previewUrl,
+        error: null,
+        loading: false,
+        success: false
       });
-    } finally {
-      setLoading(false);
+    } else {
+      setParafUpload({
+        selectedFile: null,
+        previewUrl: null,
+        error: 'File harus berupa gambar',
+        loading: false,
+        success: false
+      });
     }
   };
+
+  const handleParafUpload = async (e) => {
+    e.preventDefault();
+    if (!parafUpload.selectedFile) return;
+
+    setParafUpload(prev => ({ ...prev, loading: true, error: null }));
+
+    const formData = new FormData();
+    formData.append('paraf_image', parafUpload.selectedFile);
+
+    try {
+      const response = await axiosInstance.put('/api/admin/paraf', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        setParafUpload(prev => ({
+          ...prev,
+          loading: false,
+          success: true,
+          error: null
+        }));
+        
+        // Show success message
+        alert('Paraf berhasil diupload');
+      } else {
+        throw new Error(response.data.message || 'Gagal mengupload paraf');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      setParafUpload(prev => ({
+        ...prev,
+        error: error.message || 'Gagal mengupload paraf',
+        loading: false,
+        success: false
+      }));
+      
+      // Reset preview if upload fails
+      if (parafUpload.previewUrl) {
+        URL.revokeObjectURL(parafUpload.previewUrl);
+      }
+    }
+  };
+
+  // Clean up preview URL when component unmounts
+  useEffect(() => {
+    return () => {
+      if (parafUpload.previewUrl) {
+        URL.revokeObjectURL(parafUpload.previewUrl);
+      }
+    };
+  }, []);
 
   return (
     <div className="bg-white rounded-lg shadow p-8">
       <div className="max-w-3xl">
-        {message.text && (
-          <div className={`mb-4 p-3 rounded ${
-            message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-          }`}>
-            {message.text}
-          </div>
-        )}
-
-        <div className="mb-12">
+        {/* Personal Information Section */}
+        <section className="mb-12">
           <h2 className="text-xl font-semibold mb-6">Informasi Pribadi</h2>
-          <div className="flex items-start">
+          
+          {/* Profile Picture and Info Form */}
+          <div className="flex items-start mb-8">
             <div className="relative">
-              <div className="w-32 h-32 rounded-full overflow-hidden bg-gray-200">
-                {profileData.photoPreview ? (
-                  <img
-                    src={profileData.photoPreview}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-400">
-                    No Photo
-                  </div>
-                )}
-              </div>
-              <label className="absolute bottom-0 right-0 p-2 bg-gray-800 rounded-full text-white cursor-pointer">
-                <Camera size={20} />
-                <input
-                  type="file"
-                  className="hidden"
-                  accept="image/*"
-                  onChange={handlePhotoChange}
+              <div className="w-32 h-32 rounded-full bg-pink-200 overflow-hidden">
+                <img
+                  src="/images/avatar.svg"
+                  alt="Profile"
+                  className="w-full h-full object-cover"
                 />
-              </label>
+              </div>
+              <button className="absolute bottom-0 right-0 p-2 bg-gray-800 rounded-full text-white">
+                <Camera size={20} />
+              </button>
             </div>
 
-            <form className="flex-1 ml-8" onSubmit={handleProfileUpdate}>
+            <form className="flex-1 ml-8">
               <div className="mb-4">
                 <label className="block text-gray-600 mb-2">Nama Lengkap</label>
                 <input
                   type="text"
-                  value={profileData.nama}
-                  onChange={(e) => setProfileData({ ...profileData, nama: e.target.value })}
+                  value={profileData.fullName}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, fullName: e.target.value }))}
                   className="w-full p-2 border rounded-lg"
                 />
               </div>
@@ -139,71 +164,118 @@ function FormProfile() {
                 <input
                   type="email"
                   value={profileData.email}
-                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
+                  onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full p-2 border rounded-lg"
                 />
               </div>
-
-              <div className="text-right">
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                >
-                  {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
-                </button>
-              </div>
             </form>
           </div>
-        </div>
 
-        <div>
+          {/* Paraf Upload Section */}
+          <div className="bg-white p-6 rounded-lg shadow mt-8">
+            <h3 className="text-lg font-medium mb-4">Upload Paraf</h3>
+            
+            {/* Error message */}
+            {parafUpload.error && (
+              <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-md">
+                {parafUpload.error}
+              </div>
+            )}
+
+            {/* Success message */}
+            {parafUpload.success && (
+              <div className="mb-4 p-4 bg-green-50 text-green-600 rounded-md">
+                Paraf berhasil diupload!
+              </div>
+            )}
+
+            {/* Preview Image */}
+            {parafUpload.previewUrl && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Preview Paraf:</p>
+                <img 
+                  src={parafUpload.previewUrl} 
+                  alt="Preview Paraf" 
+                  className="h-20 object-contain border rounded-md"
+                />
+              </div>
+            )}
+
+            <form onSubmit={handleParafUpload} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Pilih Gambar Paraf
+                </label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full p-2 border rounded-md"
+                  disabled={parafUpload.loading}
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  Format yang didukung: JPG, JPEG, PNG (Max: 5MB)
+                </p>
+              </div>
+              
+              <button
+                type="submit"
+                disabled={!parafUpload.selectedFile || parafUpload.loading}
+                className={`px-4 py-2 rounded-md text-white transition-colors
+                  ${!parafUpload.selectedFile || parafUpload.loading
+                    ? 'bg-gray-400 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700'}`}
+              >
+                {parafUpload.loading ? 'Mengupload...' : 'Upload Paraf'}
+              </button>
+            </form>
+          </div>
+        </section>
+
+        {/* Change Password Section */}
+        <section>
           <h2 className="text-xl font-semibold mb-6">Ubah Password</h2>
-          <form onSubmit={handlePasswordUpdate}>
-            <div className="mb-4">
+          <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+            <div>
               <label className="block text-gray-600 mb-2">Password Lama</label>
               <input
                 type="password"
-                value={passwordData.oldPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, oldPassword: e.target.value })}
+                value={profileData.oldPassword}
+                onChange={(e) => setProfileData(prev => ({ ...prev, oldPassword: e.target.value }))}
                 className="w-full p-2 border rounded-lg"
               />
             </div>
 
-            <div className="mb-4">
+            <div>
               <label className="block text-gray-600 mb-2">Password Baru</label>
               <input
                 type="password"
-                value={passwordData.newPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, newPassword: e.target.value })}
+                value={profileData.newPassword}
+                onChange={(e) => setProfileData(prev => ({ ...prev, newPassword: e.target.value }))}
                 className="w-full p-2 border rounded-lg"
               />
             </div>
 
-            <div className="mb-6">
+            <div>
               <label className="block text-gray-600 mb-2">Konfirmasi Password</label>
               <input
                 type="password"
-                value={passwordData.konfirmasiPassword}
-                onChange={(e) => setPasswordData({ ...passwordData, konfirmasiPassword: e.target.value })}
+                value={profileData.confirmPassword}
+                onChange={(e) => setProfileData(prev => ({ ...prev, confirmPassword: e.target.value }))}
                 className="w-full p-2 border rounded-lg"
               />
             </div>
 
-            <div className="text-right">
-              <button
-                type="submit"
-                disabled={loading}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-              >
-                {loading ? 'Memperbarui...' : 'Update Password'}
-              </button>
+            <div className="justify-end flex">
+              <Button variant="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                Update Password
+              </Button>
             </div>
           </form>
-        </div>
+        </section>
       </div>
     </div>
   );
-}
+};
 
 export default FormProfile;

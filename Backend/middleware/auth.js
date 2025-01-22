@@ -99,7 +99,14 @@ const authMiddleware = {
   isResourceOwner: async (req, res, next) => {
     try {
       const adminId = req.user.admin_id;
-      const resourceId = req.params.id;
+      const resourceId = req.params.logbookId || req.params.id;
+      
+      if (!resourceId || !adminId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Parameter ID tidak valid'
+        });
+      }
       const resource = req.baseUrl.split('/')[2]; // e.g., /api/mahasiswa -> mahasiswa
 
       let query;

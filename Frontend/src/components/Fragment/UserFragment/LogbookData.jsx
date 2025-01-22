@@ -1,9 +1,33 @@
-import React from "react";
-import { ArrowUpDown } from "lucide-react";
+import React, { useState } from "react";
+import { Edit2 } from "lucide-react";
+import axiosInstance from "../../../../../Backend/utils/axios";
+import ActivityModal from "./Activity";
 
 function LogbookData({ logbooks }) {
-  console.log('Logbooks di komponen:', logbooks); 
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedLogbook, setSelectedLogbook] = useState(null);
   
+  const handleEdit = (logbook) => {
+    setSelectedLogbook(logbook);
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (formData) => {
+    try {
+      const response = await axiosInstance.put(`/api/logbook/${selectedLogbook.id}`, formData);
+      
+      if (response.data.success) {
+        setIsEditModalOpen(false);
+        // Reload halaman untuk mendapatkan data terbaru
+        window.location.reload();
+        alert('Logbook berhasil diupdate');
+      }
+    } catch (error) {
+      console.error('Error updating logbook:', error);
+      alert(error.response?.data?.message || 'Gagal mengupdate logbook');
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <div className="overflow-x-auto">
@@ -12,9 +36,9 @@ function LogbookData({ logbooks }) {
             <tr className="border-b">
               <th className="text-left py-4 px-4">Tanggal</th>
               <th className="text-left py-4 px-4">Aktivitas</th>
-              <th className="text-left py-4 px-4">Dokumentasi</th>
+              <th className="text-left py-4 px-4">Progress</th>
               <th className="text-left py-4 px-4">Status</th>
-              <th className="text-left py-4 px-4">Paraf</th>
+              <th className="text-left py-4 px-4">Aksi</th>
             </tr>
           </thead>
           <tbody>
@@ -28,15 +52,17 @@ function LogbookData({ logbooks }) {
                   })}
                 </td>
                 <td className="py-4 px-4 max-w-md">
-                  {item.aktivitas} Progress: {item.progress}%
+                  {item.aktivitas}
+                  {item.catatan_admin && (
+                    <div className="text-sm text-red-600 mt-1">
+                      Catatan Admin: {item.catatan_admin}
+                    </div>
+                  )}
                 </td>
                 <td className="py-4 px-4">
-                  {item.file_dokumentasi && (
-                    <button className="text-blue-600 hover:underline flex items-center">
-                      <ArrowUpDown className="mr-1 h-4 w-4" />
-                      View
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <div className="w-12 text-center">{item.progress}%</div>
+                  </div>
                 </td>
                 <td className="py-4 px-4">
                   <span className={`px-3 py-1 rounded-full text-sm ${
@@ -50,33 +76,29 @@ function LogbookData({ logbooks }) {
                   </span>
                 </td>
                 <td className="py-4 px-4">
-                  {item.paraf_admin ? (
-                    <button className="text-gray-600 hover:text-gray-800 flex items-center">
-                      <ArrowUpDown className="mr-1 h-4 w-4" />
-                      Paraf
+                  {item.status === 'rejected' && (
+                    <button
+                      onClick={() => handleEdit(item)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
+                      title="Edit Logbook"
+                    >
+                      <Edit2 size={20} />
                     </button>
-                  ) : "-"}
+                  )}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <div className="mt-4 flex justify-between items-center">
-        <p className="text-sm text-gray-500">
-          Showing {logbooks?.length ? '1' : '0'} to {logbooks?.length} of {logbooks?.length} entries
-        </p>
-        <div className="flex space-x-2">
-          <button className="px-4 py-2 border rounded text-gray-600">
-            Previous
-          </button>
-          <button className="px-4 py-2 border rounded bg-gray-50">1</button>
-          <button className="px-4 py-2 border rounded">2</button>
-          <button className="px-4 py-2 border rounded text-gray-600">
-            Next
-          </button>
-        </div>
-      </div>
+
+      <ActivityModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSubmit={handleEditSubmit}
+        initialData={selectedLogbook}
+        isEdit={true}
+      />
     </div>
   );
 }

@@ -2,26 +2,19 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const fs = require('fs');
 const adminController = require('../controllers/adminController');
 const auth = require('../middleware/auth');
-const db = require('../config/database');
+const validation = require('../middleware/validation');
+const absenController = require('../controllers/absenController');
 
-// Configure multer storage for paraf uploads
+// Configure multer storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Create uploads/paraf directory if it doesn't exist
-    const uploadDir = 'uploads/paraf';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
+    cb(null, 'uploads/profiles/');
   },
   filename: function (req, file, cb) {
-    // Create unique filename with original extension
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const fileExt = path.extname(file.originalname);
-    cb(null, `paraf-${uniqueSuffix}${fileExt}`);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -34,9 +27,9 @@ const upload = multer({
   fileFilter: function(req, file, cb) {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.mimetype)) {
-      const error = new Error('File harus berupa gambar (JPG, JPEG, atau PNG)');
+      const error = new Error('Wrong file type');
       error.code = 'WRONG_FILE_TYPE';
-      return cb(error, false);  
+      return cb(error, false);
     }
     cb(null, true);
   }
@@ -45,83 +38,61 @@ const upload = multer({
 // Public route for getting admin users list (used in registration)
 router.get('/users', adminController.getAdminUsers);
 
-// Protect all routes
+// Protect all routes below this point
 router.use(auth.verifyToken);
 router.use(auth.isAdmin);
 
-// Update paraf route
-router.put('/paraf', upload.single('paraf_image'), async (req, res) => {
-  let connection;
-  try {
-    connection = await db.getConnection();
-    
-    if (!req.file) {
-      return res.status(400).json({
+// Dashboard
+router.get('/dashboard/stats', adminController.getDashboardStats);
+
+// Mahasiswa management
+router.get('/mahasiswa', adminController.getMahasiswa);
+router.post('/mahasiswa',
+  validation.validateRegister,
+  validation.handleValidationErrors,
+  adminController.createMahasiswa
+);
+router.put('/mahasiswa/:id/status',
+  auth.isResourceOwner,
+  adminController.updateMahasiswaStatus
+);
+
+router.get('/institutions', adminController.getInstitutions);
+
+
+// Profile management
+router.put('/profile',
+  upload.single('photo_profile'),
+  (error, req, res, next) => {
+    if (error) {
+      if (error.code === 'LIMIT_FILE_SIZE') {
+        return res.status(400).json({
+          success: false,
+          message: 'File terlalu besar. Maksimal 5MB'
+        });
+      }
+      if (error.code === 'WRONG_FILE_TYPE') {
+        return res.status(400).json({
+          success: false,
+          message: 'Tipe file tidak diizinkan. Gunakan JPG, JPEG, atau PNG'
+        });
+      }
+      return res.status(500).json({
         success: false,
-        message: 'File paraf tidak ditemukan'
+        message: 'Error saat upload file'
       });
     }
+    next();
+  },
+  validation.validateUpdateProfile,
+  validation.handleValidationErrors,
+  adminController.updateProfile
+);
 
-    const adminId = req.user.admin_id;
-    
-    // Get the old paraf image path
-    const [rows] = await connection.execute(
-      'SELECT paraf_image FROM admin WHERE id = ?',
-      [adminId]
-    );
+// Update admin password
+router.put('/profile/password', auth.verifyToken, adminController.updatePassword);
 
-    // Delete old paraf file if it exists
-    if (rows[0] && rows[0].paraf_image) {
-      const oldParafPath = rows[0].paraf_image.toString(); // Convert Buffer to string if needed
-      const oldPath = path.join(__dirname, '..', oldParafPath);
-      
-      if (fs.existsSync(oldPath)) {
-        try {
-          fs.unlinkSync(oldPath);
-          console.log('Old paraf deleted successfully');
-        } catch (err) {
-          console.error('Error deleting old paraf:', err);
-        }
-      }
-    }
-
-    // Store the relative path in database
-    const relativePath = req.file.path.replace(/\\/g, '/');
-    console.log('New paraf path:', relativePath);
-
-    await connection.execute(
-      'UPDATE admin SET paraf_image = ? WHERE id = ?',
-      [relativePath, adminId]
-    );
-
-    res.json({
-      success: true,
-      message: 'Paraf berhasil diupload',
-      data: {
-        paraf_url: relativePath
-      }
-    });
-
-  } catch (error) {
-    console.error('Upload paraf error:', error);
-    // Delete uploaded file if database update fails
-    if (req.file?.path) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (err) {
-        console.error('Error deleting failed upload:', err);
-      }
-    }
-    
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Gagal mengupload paraf'
-    });
-  } finally {
-    if (connection) {
-      connection.release();
-    }
-  }
-});
+// Validation code
+router.post('/generate-validation-code', adminController.generateValidationCode);
 
 module.exports = router;

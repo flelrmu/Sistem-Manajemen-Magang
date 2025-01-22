@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axiosInstance from "../../../../../Backend/utils/axios";
 
-function LogbookCard({ refreshTrigger }) {
+function LogbookCard({ refreshTrigger = 0 }) {
   const [stats, setStats] = useState({
     total: 0,
     approved: 0,
@@ -11,7 +11,7 @@ function LogbookCard({ refreshTrigger }) {
 
   useEffect(() => {
     fetchLogbookStats();
-  }, [refreshTrigger]); // Add refreshTrigger to dependency array
+  }, [refreshTrigger]);
 
   const fetchLogbookStats = async () => {
     try {
@@ -32,16 +32,11 @@ function LogbookCard({ refreshTrigger }) {
 
   const getColorClass = (title) => {
     switch (title) {
-      case "Total Logbook":
-        return "text-black";
-      case "Approved":
-        return "text-green-500";
-      case "Pending":
-        return "text-yellow-500";
-      case "Rejected":
-        return "text-red-500";
-      default:
-        return "text-gray-500";
+      case "Total Logbook": return "text-black";
+      case "Approved": return "text-green-500";
+      case "Pending": return "text-yellow-500";
+      case "Rejected": return "text-red-500";
+      default: return "text-gray-500";
     }
   };
 
@@ -66,10 +61,5 @@ function LogbookCard({ refreshTrigger }) {
     </div>
   );
 }
-
-// Add prop types validation
-LogbookCard.defaultProps = {
-  refreshTrigger: 0
-};
 
 export default LogbookCard;

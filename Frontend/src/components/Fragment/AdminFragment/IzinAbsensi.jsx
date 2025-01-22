@@ -16,7 +16,7 @@ function IzinAbsensi() {
           <tr>
             <th className="text-left p-4">Mahasiswa</th>
             <th className="text-left p-4">Tanggal</th>
-            <th className="text-left p-4">Alasan</th>
+            <th className="text-left p-4">Alasan Izin</th>
             <th className="text-left p-4">Aksi</th>
           </tr>
         </thead>

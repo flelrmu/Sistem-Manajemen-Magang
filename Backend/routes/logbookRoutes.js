@@ -48,6 +48,8 @@ router.post('/',
   logbookController.submitLogbook
 );
 
+router.get('/stats', logbookController.getLogbookStatusStats);
+
 
 router.get('/export/:mahasiswaId?', logbookController.downloadLogbook);
 

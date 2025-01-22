@@ -18,6 +18,11 @@ const reportRoutes = require('./routes/reportRoutes');
 
 const app = express();
 
+const uploadDir = path.join(__dirname, 'uploads/reports');
+if (!fs.existsSync(uploadDir)){
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
 // Middleware
 app.use(cors());
 app.use(helmet());
@@ -32,9 +37,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 // Create upload directories if they don't exist
 const uploadDirs = [
   'uploads/profiles',
-  'uploads/reports', 
+  'uploads/reports',
   'uploads/logbooks',
-  'uploads/qrcodes'  // Add qrcodes directory
+  'uploads/qrcodes',
+  'uploads/assets'  // Tambahkan ini
 ];
 
 uploadDirs.forEach(dir => {
@@ -50,7 +56,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/absen', absenRoutes);
 app.use('/api/logbook', logbookRoutes);
-app.use('/api/report', reportRoutes);
+app.use('/api/reports', reportRoutes); // Changed from report to reports
+app.use('/api/reports', require('./routes/reportRoutes'));
 
 // Root route
 app.get('/', (req, res) => {
@@ -60,6 +67,17 @@ app.get('/', (req, res) => {
     status: 'active'
   });
 });
+
+// Database connection
+db.getConnection()
+  .then(connection => {
+    console.log('Database connected successfully');
+    connection.release();
+  })
+  .catch(err => {
+    console.error('Database connection error:', err);
+    process.exit(1);
+  });
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -84,15 +102,17 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
-
-db.getConnection()
-  .then(connection => {
-    console.log('Database connected successfully');
-    connection.release();
-  })
-  .catch(err => {
-    console.error('Error connecting to the database:', err);
-  });
-
-module.exports = app;
 });
+
+// Serve static files dengan konfigurasi yang benar
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, filePath) => {
+    // Set proper headers untuk file download
+    if (filePath.endsWith('.pdf')) {
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment'
+      });
+    }
+  }
+}));

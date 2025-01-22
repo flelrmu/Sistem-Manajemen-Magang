@@ -6,6 +6,7 @@ const authMiddleware = {
   verifyToken: async (req, res, next) => {
     try {
       const token = req.headers.authorization?.split(' ')[1];
+
       if (!token) {
         return res.status(401).json({
           success: false,
@@ -14,35 +15,17 @@ const authMiddleware = {
       }
 
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('Decoded token:', decoded);
       
-      // Get updated user data with role-specific information
-      let userData;
+      // Get updated user data
+      const [users] = await db.execute(
+        'SELECT * FROM users WHERE id = ?',
+        [decoded.id]
+      );
 
-      if (decoded.role === 'mahasiswa') {
-        const [users] = await db.execute(
-          `SELECT u.*, m.id as mahasiswa_id, m.admin_id, m.nama, m.nim 
-           FROM users u 
-           JOIN mahasiswa m ON u.id = m.user_id 
-           WHERE u.id = ?`,
-          [decoded.id]
-        );
-        userData = users[0];
-      } else if (decoded.role === 'admin') {
-        const [users] = await db.execute(
-          `SELECT u.*, a.id as admin_id, a.nama 
-           FROM users u 
-           JOIN admin a ON u.id = a.user_id 
-           WHERE u.id = ?`,
-          [decoded.id]
-        );
-        userData = users[0];
-      }
-
-      if (!userData) {
+      if (users.length === 0) {
         return res.status(401).json({
           success: false,
-          message: 'User tidak ditemukan'
+          message: 'User tidak valid'
         });
       }
 
@@ -57,11 +40,6 @@ const authMiddleware = {
         if (mahasiswa.length > 0) {
           user.mahasiswa_id = mahasiswa[0].id;
           user.admin_id = mahasiswa[0].admin_id;
-        } else {
-          return res.status(401).json({
-            success: false,
-            message: 'Data mahasiswa tidak ditemukan'
-          });
         }
       } else if (user.role === 'admin') {
         const [admin] = await db.execute(
@@ -70,19 +48,13 @@ const authMiddleware = {
         );
         if (admin.length > 0) {
           user.admin_id = admin[0].id;
-        } else {
-          return res.status(401).json({
-            success: false,
-            message: 'Data admin tidak ditemukan'
-          });
         }
       }
 
       req.user = user;
-      console.log('verifyToken - User:', req.user);
       next();
+
     } catch (error) {
-      console.error('Auth middleware error:', error);
       if (error.name === 'JsonWebTokenError') {
         return res.status(401).json({
           success: false,
@@ -95,6 +67,7 @@ const authMiddleware = {
           message: 'Token sudah kadaluarsa'
         });
       }
+      console.error('Auth middleware error:', error);
       res.status(500).json({
         success: false,
         message: 'Terjadi kesalahan pada autentikasi'
@@ -104,7 +77,7 @@ const authMiddleware = {
 
   // Check if user is admin
   isAdmin: (req, res, next) => {
-    if (!req.user || req.user.role !== 'admin' || !req.user.admin_id) {
+    if (req.user.role !== 'admin') {
       return res.status(403).json({
         success: false,
         message: 'Akses ditolak. Hanya admin yang diizinkan.'
@@ -115,7 +88,7 @@ const authMiddleware = {
 
   // Check if user is mahasiswa
   isMahasiswa: (req, res, next) => {
-    if (!req.user || req.user.role !== 'mahasiswa' || !req.user.mahasiswa_id) {
+    if (req.user.role !== 'mahasiswa') {
       return res.status(403).json({
         success: false,
         message: 'Akses ditolak. Hanya mahasiswa yang diizinkan.'
@@ -129,7 +102,7 @@ const authMiddleware = {
     try {
       const adminId = req.user.admin_id;
       const resourceId = req.params.id;
-      const resource = req.baseUrl.split('/')[2];
+      const resource = req.baseUrl.split('/')[2]; // e.g., /api/mahasiswa -> mahasiswa
 
       let query;
       switch (resource) {
@@ -153,6 +126,7 @@ const authMiddleware = {
       }
 
       const [result] = await db.execute(query, [resourceId, adminId]);
+
       if (result.length === 0) {
         return res.status(403).json({
           success: false,
@@ -161,6 +135,7 @@ const authMiddleware = {
       }
 
       next();
+
     } catch (error) {
       console.error('Resource owner check error:', error);
       res.status(500).json({

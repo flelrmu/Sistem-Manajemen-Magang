@@ -12,6 +12,10 @@
   "dependencies": {
     "@babel/runtime": "^7.26.0",
     "@chakra-ui/alert": "^2.2.2",
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.0",
+    "@gluestack-ui/alert-dialog": "^0.1.32",
+    "@mui/material": "^6.4.1",
     "aos": "^2.3.4",
     "axios": "^1.7.9",
     "date-fns": "^4.1.0",

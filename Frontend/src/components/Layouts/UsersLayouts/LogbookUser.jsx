@@ -21,16 +21,10 @@ const LogbookUser = () => {
     try {
       setIsLoading(true);
       setError(null);
-      
-      const response = await axiosInstance.get('/api/logbook');
-      
-      if (response.data.success) {
-        setLogbooks(response.data.data);
-      } else {
-        throw new Error(response.data.message || 'Failed to fetch logbooks');
-      }
+      const response = await axiosInstance.get("/api/logbook");
+      setLogbooks(response.data.success ? response.data.data : []);
     } catch (error) {
-      console.error('Error fetching logbooks:', error);
+      console.error("Error fetching logbooks:", error);
       setError(error.message);
     } finally {
       setIsLoading(false);
@@ -39,99 +33,117 @@ const LogbookUser = () => {
 
   const handleSubmitLogbook = async (logbookData) => {
     try {
-      if (!logbookData.tanggal || !logbookData.aktivitas || !logbookData.progress) {
-        throw new Error('Mohon lengkapi semua field yang diperlukan');
+      if (
+        !logbookData.tanggal ||
+        !logbookData.aktivitas ||
+        !logbookData.progress
+      ) {
+        throw new Error("Mohon lengkapi semua field yang diperlukan");
       }
 
       const formData = new FormData();
-      formData.append('tanggal', logbookData.tanggal);
-      formData.append('aktivitas', logbookData.aktivitas);
-      formData.append('progress', logbookData.progress);
-      
+      formData.append("tanggal", logbookData.tanggal);
+      formData.append("aktivitas", logbookData.aktivitas);
+      formData.append("progress", logbookData.progress);
+
       if (logbookData.file) {
-        formData.append('file_dokumentasi', logbookData.file);
+        formData.append("file_dokumentasi", logbookData.file);
       }
 
-      const response = await axiosInstance.post('/api/logbook', formData, {
+      const response = await axiosInstance.post("/api/logbook", formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
-        }
+          "Content-Type": "multipart/form-data",
+        },
       });
 
       if (response.data.success) {
         setIsModalOpen(false);
         await fetchLogbooks();
-        alert('Logbook berhasil disimpan');
+        alert("Logbook berhasil disimpan");
       } else {
         throw new Error(response.data.message);
       }
     } catch (error) {
-      console.error('Error submitting logbook:', error);
-      alert(error.response?.data?.message || error.message || 'Terjadi kesalahan saat menyimpan logbook');
+      console.error("Error submitting logbook:", error);
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Terjadi kesalahan saat menyimpan logbook"
+      );
     }
   };
 
   const handleEditLogbook = async (editedLogbook) => {
     try {
       const formData = new FormData();
-      formData.append('tanggal', editedLogbook.tanggal);
-      formData.append('aktivitas', editedLogbook.aktivitas);
-      formData.append('progress', editedLogbook.progress);
-      
-      const response = await axiosInstance.put(`/api/logbook/${editedLogbook.id}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
+      formData.append("tanggal", editedLogbook.tanggal);
+      formData.append("aktivitas", editedLogbook.aktivitas);
+      formData.append("progress", editedLogbook.progress);
+
+      const response = await axiosInstance.put(
+        `/api/logbook/${editedLogbook.id}`,
+        formData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         }
-      });
+      );
 
       if (response.data.success) {
         await fetchLogbooks();
-        alert('Logbook berhasil diperbarui');
+        alert("Logbook berhasil diperbarui");
       } else {
         throw new Error(response.data.message);
       }
     } catch (error) {
-      console.error('Error updating logbook:', error);
-      alert(error.response?.data?.message || error.message || 'Terjadi kesalahan saat memperbarui logbook');
+      console.error("Error updating logbook:", error);
+      alert(
+        error.response?.data?.message ||
+          error.message ||
+          "Terjadi kesalahan saat memperbarui logbook"
+      );
     }
   };
 
   const handleDownloadPDF = async () => {
     if (isDownloading) return;
-    
+
     try {
       setIsDownloading(true);
-      
-      const response = await axiosInstance.get('/api/logbook/export', {
-        responseType: 'blob'
+
+      const response = await axiosInstance.get("/api/logbook/export", {
+        responseType: "blob",
       });
-  
+
       // Handle error jika response bukan PDF
-      const contentType = response.headers['content-type'];
-      if (contentType === 'application/json') {
+      const contentType = response.headers["content-type"];
+      if (contentType === "application/json") {
         const reader = new FileReader();
         reader.onload = () => {
           const result = JSON.parse(reader.result);
-          alert(result.message || 'Terjadi kesalahan saat mengunduh logbook');
+          alert(result.message || "Terjadi kesalahan saat mengunduh logbook");
         };
         reader.readAsText(response.data);
         return;
       }
-  
+
       // Proses download PDF
-      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const blob = new Blob([response.data], { type: "application/pdf" });
       const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = url;
-      link.setAttribute('download', `logbook_${new Date().toISOString().split('T')[0]}.pdf`);
+      link.setAttribute(
+        "download",
+        `logbook_${new Date().toISOString().split("T")[0]}.pdf`
+      );
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      
     } catch (error) {
-      console.error('Error downloading logbook:', error);
-      alert('Terjadi kesalahan saat mengunduh logbook');
+      console.error("Error downloading logbook:", error);
+      alert("Terjadi kesalahan saat mengunduh logbook");
     } finally {
       setIsDownloading(false);
     }
@@ -164,28 +176,17 @@ const LogbookUser = () => {
             <button
               onClick={handleDownloadPDF}
               className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-lg inline-flex items-center justify-center min-w-[180px] transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-              disabled={isDownloading || logbooks.length === 0}
+              disabled={isDownloading}
             >
               <Download className="mr-2 h-5 w-5" />
-              {isDownloading ? 'Mengunduh...' : 'Download Rekap'}
+              {isDownloading ? "Mengunduh..." : "Download Rekap"}
             </button>
           </div>
         </div>
 
-        {isLoading ? (
-          <div className="flex justify-center items-center py-8">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          </div>
-        ) : logbooks.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-6 text-center">
-            <p className="text-gray-500">Belum ada data logbook</p>
-          </div>
-        ) : (
-          <>
-            <LogbookCard logbooks={logbooks} />
-            <LogbookData logbooks={logbooks} onEdit={handleEditLogbook} />
-          </>
-        )}
+        {/* Always show cards and data table */}
+        <LogbookCard logbooks={logbooks} />
+        <LogbookData logbooks={logbooks} onEdit={handleEditLogbook} />
 
         <ActivityModal
           isOpen={isModalOpen}

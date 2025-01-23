@@ -1,12 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from '../../Context/UserContext';
 
-const PermissionModal = ({ isOpen, onClose, onSubmit }) => {
+const PermissionModal = ({ isOpen, onClose }) => {
+  const { user } = useAuth();
+  const [categories, setCategories] = useState([]);
   const [formData, setFormData] = useState({
-    date: '',
-    category: 'Sakit',
-    description: '',
-    file: null
+    tanggal_mulai: '',
+    tanggal_selesai: '',
+    kategori: '',
+    keterangan: '',
+    file_bukti: null
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get('http://localhost:3000/api/izin/categories');
+        setCategories(response.data);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+        setError('Failed to load categories');
+      }
+    };
+    fetchCategories();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -19,13 +39,36 @@ const PermissionModal = ({ isOpen, onClose, onSubmit }) => {
   const handleFileChange = (e) => {
     setFormData(prev => ({
       ...prev,
-      file: e.target.files[0]
+      file_bukti: e.target.files[0]
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(formData);
+    setLoading(true);
+    setError('');
+
+    try {
+      const formPayload = new FormData();
+      Object.keys(formData).forEach(key => {
+        if (formData[key]) {
+          formPayload.append(key, formData[key]);
+        }
+      });
+
+      await axios.post('http://localhost:3000/api/izin/submit', formPayload, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      onClose();
+      // Optional: Add success notification
+    } catch (error) {
+      setError(error.response?.data?.message || 'Terjadi kesalahan saat mengajukan izin');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -35,72 +78,92 @@ const PermissionModal = ({ isOpen, onClose, onSubmit }) => {
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <h2 className="text-xl font-semibold mb-4">Pengajuan Izin</h2>
         
-        <form onSubmit={handleSubmit}>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Tanggal</label>
-              <div className="relative">
-                <input
-                  type="date"
-                  name="date"
-                  value={formData.date}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Kategori</label>
-              <select
-                name="category"
-                value={formData.category}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                required
-              >
-                <option value="Sakit">Sakit</option>
-                <option value="Izin">Izin</option>
-                <option value="Cuti">Cuti</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Keterangan</label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                className="w-full px-3 py-2 border rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                rows="4"
-                required
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Upload Bukti (jika ada)</label>
-              <input
-                type="file"
-                onChange={handleFileChange}
-                className="w-full px-3 py-2 border rounded text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-              />
-            </div>
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
+            {error}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Tanggal Mulai</label>
+            <input
+              type="date"
+              name="tanggal_mulai"
+              value={formData.tanggal_mulai}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded"
+              required
+            />
           </div>
 
-          <div className="mt-6 flex justify-end space-x-3">
+          <div>
+            <label className="block text-sm font-medium mb-1">Tanggal Selesai</label>
+            <input
+              type="date"
+              name="tanggal_selesai"
+              value={formData.tanggal_selesai}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Kategori</label>
+            <select
+              name="kategori"
+              value={formData.kategori}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded"
+              required
+            >
+              <option value="">Pilih Kategori</option>
+              <option value="Sakit">Sakit</option>
+              <option value="Keperluan Keluarga">Keperluan Keluarga</option>
+              <option value="Keperluan Kampus">Keperluan Kampus</option>
+              <option value="Lainnya">Lainnya</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Keterangan</label>
+            <textarea
+              name="keterangan"
+              value={formData.keterangan}
+              onChange={handleInputChange}
+              className="w-full px-3 py-2 border rounded"
+              rows="4"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-1">Upload Bukti</label>
+            <input
+              type="file"
+              name="file_bukti"
+              onChange={handleFileChange}
+              className="w-full px-3 py-2 border rounded text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700"
+              accept=".pdf,.jpg,.jpeg,.png"
+            />
+          </div>
+
+          <div className="flex justify-end space-x-3 mt-6">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 transition-colors"
+              className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600"
+              disabled={loading}
             >
               Batal
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+              disabled={loading}
             >
-              Ajukan
+              {loading ? 'Mengirim...' : 'Ajukan'}
             </button>
           </div>
         </form>

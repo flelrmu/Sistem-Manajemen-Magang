@@ -257,66 +257,44 @@ const absenController = {
   },
 
   // Pengajuan izin
-  submitIzin: async (req, res) => {
+  getKategoriIzin: async (req, res) => {
     try {
-      const mahasiswaId = req.user.mahasiswa_id;
+      const [categories] = await db.execute("SELECT * FROM kategori_izin");
+      res.json({
+        success: true,
+        data: categories,
+      });
+    } catch (error) {
+      console.error("Get categories error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil kategori",
+      });
+    }
+  },
+
+  // Submit permission request
+  submitIzin: async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+      await connection.beginTransaction();
+
       const { tanggal_mulai, tanggal_selesai, kategori, keterangan } = req.body;
+      const mahasiswaId = req.user.mahasiswa_id;
       const fileBukti = req.file ? req.file.filename : null;
 
-      // Validate dates
-      const startDate = new Date(tanggal_mulai);
-      const endDate = new Date(tanggal_selesai);
-      const today = new Date();
-
-      if (startDate < today) {
-        return res.status(400).json({
-          success: false,
-          message: "Tanggal mulai tidak boleh kurang dari hari ini",
-        });
-      }
-
-      if (endDate < startDate) {
-        return res.status(400).json({
-          success: false,
-          message: "Tanggal selesai harus setelah tanggal mulai",
-        });
-      }
-
       // Get admin_id from mahasiswa
-      const [mahasiswa] = await db.execute(
+      const [mahasiswa] = await connection.execute(
         "SELECT admin_id FROM mahasiswa WHERE id = ?",
         [mahasiswaId]
       );
 
-      // Check for overlapping permissions
-      const [existingIzin] = await db.execute(
-        `SELECT id FROM izin 
-         WHERE mahasiswa_id = ? 
-         AND status != 'rejected'
-         AND (
-           (tanggal_mulai BETWEEN ? AND ?) OR
-           (tanggal_selesai BETWEEN ? AND ?) OR
-           (? BETWEEN tanggal_mulai AND tanggal_selesai)
-         )`,
-        [
-          mahasiswaId,
-          tanggal_mulai,
-          tanggal_selesai,
-          tanggal_mulai,
-          tanggal_selesai,
-          tanggal_mulai,
-        ]
-      );
-
-      if (existingIzin.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: "Sudah ada pengajuan izin untuk periode yang sama",
-        });
+      if (mahasiswa.length === 0) {
+        throw new Error("Mahasiswa tidak ditemukan");
       }
 
-      // Insert izin
-      await db.execute(
+      // Insert permission request
+      await connection.execute(
         `INSERT INTO izin (
           mahasiswa_id, admin_id, tanggal_mulai,
           tanggal_selesai, kategori, keterangan,
@@ -333,16 +311,21 @@ const absenController = {
         ]
       );
 
+      await connection.commit();
+
       res.status(201).json({
         success: true,
         message: "Pengajuan izin berhasil dikirim",
       });
     } catch (error) {
+      await connection.rollback();
       console.error("Submit izin error:", error);
       res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat mengajukan izin",
+        message: error.message || "Terjadi kesalahan saat mengajukan izin",
       });
+    } finally {
+      connection.release();
     }
   },
 
@@ -352,7 +335,7 @@ const absenController = {
     try {
       await connection.beginTransaction();
 
-      const { izinId } = req.params;
+      const izinId = req.params.id;
       const { status, alasan_response } = req.body;
       const adminId = req.user.id;
 
@@ -439,19 +422,39 @@ const absenController = {
 
   // Get riwayat izin (continued...)
   getRiwayatIzin: async (req, res) => {
+    const connection = await db.getConnection();
     try {
-      const mahasiswaId = req.params.id || req.user.mahasiswa_id;
+      const userId = req.user.mahasiswa_id || req.user.admin_id;
+      const userRole = req.user.role;
 
-      const [riwayat] = await db.execute(
-        `SELECT i.*, m.nama as mahasiswa_nama, a.nama as admin_nama,
-           DATEDIFF(i.tanggal_selesai, i.tanggal_mulai) + 1 as total_hari
-         FROM izin i
-         JOIN mahasiswa m ON i.mahasiswa_id = m.id
-         JOIN admin a ON i.admin_id = a.id
-         WHERE i.mahasiswa_id = ?
-         ORDER BY i.created_at DESC`,
-        [mahasiswaId]
-      );
+      let query = `
+        SELECT 
+          i.*,
+          m.nama as mahasiswa_nama,
+          m.nim,
+          a.nama as admin_nama,
+          DATE_FORMAT(i.tanggal_mulai, '%Y-%m-%d') as tanggal_mulai,
+          DATE_FORMAT(i.tanggal_selesai, '%Y-%m-%d') as tanggal_selesai,
+          DATE_FORMAT(i.created_at, '%Y-%m-%d %H:%i:%s') as created_at,
+          DATEDIFF(i.tanggal_selesai, i.tanggal_mulai) + 1 as total_hari
+        FROM izin i
+        JOIN mahasiswa m ON i.mahasiswa_id = m.id
+        JOIN admin a ON i.admin_id = a.id
+        WHERE `;
+
+      const params = [];
+
+      if (userRole === "mahasiswa") {
+        query += "i.mahasiswa_id = ?";
+        params.push(userId);
+      } else {
+        query += "i.admin_id = ?";
+        params.push(userId);
+      }
+
+      query += " ORDER BY i.created_at DESC";
+
+      const [riwayat] = await connection.execute(query, params);
 
       res.json({
         success: true,
@@ -463,6 +466,8 @@ const absenController = {
         success: false,
         message: "Terjadi kesalahan saat mengambil riwayat izin",
       });
+    } finally {
+      connection.release();
     }
   },
 

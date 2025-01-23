@@ -3,6 +3,7 @@ import PermissionModal from "../../Fragment/UserFragment/Permission";
 import RiwayatAbsensi from "../../Fragment/UserFragment/RiwayatAbsensi";
 import AbsensiCard from "../../Fragment/UserFragment/AbsensiCard";
 import PageTitle from "../../Elements/Items/PageTitle";
+import IzinUser from "../../Fragment/UserFragment/IzinUser";
 
 const AbsensiUser = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -44,6 +45,7 @@ const AbsensiUser = () => {
           onClose={handleCloseModal}
           onSubmit={handleSubmitPermission}
         />
+        <IzinUser/>
       </div>
     </div>
   );

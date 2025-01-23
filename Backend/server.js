@@ -15,6 +15,7 @@ const userRoutes = require('./routes/userRoutes');
 const absenRoutes = require('./routes/absenRoutes');
 const logbookRoutes = require('./routes/logbookRoutes');
 const reportRoutes = require('./routes/reportRoutes');
+const permissionRoutes = require('./routes/permissionRoutes');
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use('/api/absen', absenRoutes);
 app.use('/api/logbook', logbookRoutes);
 app.use('/api/reports', reportRoutes); // Changed from report to reports
 app.use('/api/reports', require('./routes/reportRoutes'));
+app.use('/api/izin', permissionRoutes);
 
 // Root route
 app.get('/', (req, res) => {

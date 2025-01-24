@@ -215,8 +215,7 @@ function IzinAbsensi() {
         </DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to {actionType} this permission request? This
-            action cannot be undone.
+            {actionType} permintaan izin?
           </DialogContentText>
         </DialogContent>
         <DialogActions>

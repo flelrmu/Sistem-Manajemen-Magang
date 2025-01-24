@@ -69,19 +69,6 @@ function DataAbsensi() {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status.toLowerCase()) {
-      case "hadir":
-        return "bg-green-100 text-green-800";
-      case "izin":
-        return "bg-blue-100 text-blue-800";
-      case "alpha":
-        return "bg-red-100 text-red-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
-
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
@@ -94,6 +81,7 @@ function DataAbsensi() {
       fetchAttendanceData();
     }
   }, [user, currentPage, filters]);
+  
 
   if (loading) {
     return (
@@ -165,9 +153,11 @@ function DataAbsensi() {
                         className={`px-3 py-1 rounded-full text-sm ${
                           record.status_kehadiran === "hadir"
                             ? "bg-green-100 text-green-800"
-                            : mahasiswa.status === "izin"
-                            ? "bg-blue-100 text-[#F59E0B]"
-                            : "bg-red-100 text-red-800"
+                            : record.status_kehadiran === "izin"
+                            ? "bg-yellow-100 text-[#F59E0B]"
+                            : record.status_kehadiran === "alpha"
+                            ? "bg-red-100 text-red-800"
+                        : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {record.status_kehadiran}

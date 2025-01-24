@@ -69,7 +69,8 @@ function IzinUser() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden mt-8">
+    <div className="bg-white rounded-lg shadow overflow-hidden mt-8 p-6">
+      <h2 className="text-xl font-semibold mb-6">Riwayat Izin</h2>
       <table className="w-full">
         <thead className="bg-gray-50">
           <tr>

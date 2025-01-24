@@ -43,6 +43,10 @@ router.get('/users', adminController.getAdminUsers);
 router.use(auth.verifyToken);
 router.use(auth.isAdmin);
 
+router.put('/mahasiswa/:id', adminController.updateMahasiswa);
+router.delete('/mahasiswa/:id', adminController.deleteMahasiswa);
+
+
 // Update admin password
 router.put('/profile/password', adminController.updatePassword);
 

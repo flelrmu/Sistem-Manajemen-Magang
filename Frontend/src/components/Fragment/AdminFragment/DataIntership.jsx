@@ -3,6 +3,7 @@ import { Edit2, Trash2 } from "lucide-react";
 import { useAuth } from "../../Context/UserContext";
 import axios from "axios";
 import FilterInternship from "./FilterIntership";
+import EditMahasiswaModal from "./EditMahasiswaModal";
 
 function DataInternship() {
   const [mahasiswaData, setMahasiswaData] = useState([]);
@@ -16,6 +17,8 @@ function DataInternship() {
     periode: null,
     search: "",
   });
+  const [selectedMahasiswa, setSelectedMahasiswa] = useState(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const itemsPerPage = 10;
 
   const { user } = useAuth();
@@ -71,6 +74,35 @@ function DataInternship() {
       setLoading(false);
     }
   }, [user, currentPage, filters]); // Re-fetch when filters change
+
+  const deleteMahasiswa = async (id) => {
+    if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
+
+    try {
+      await axios.delete(`http://localhost:3000/api/admin/mahasiswa/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      });
+      setMahasiswaData(
+        mahasiswaData.filter((mahasiswa) => mahasiswa.id !== id)
+      );
+      alert("Data mahasiswa berhasil dihapus.");
+    } catch (err) {
+      console.error("Error deleting mahasiswa:", err.response || err);
+      alert(err.response?.data?.message || "Gagal menghapus data mahasiswa.");
+    }
+  };
+
+  const editMahasiswa = (mahasiswa) => {
+    setSelectedMahasiswa(mahasiswa);
+    setIsEditModalOpen(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedMahasiswa(null);
+  };
 
   if (loading) {
     return (
@@ -171,10 +203,16 @@ function DataInternship() {
                     </td>
                     <td className="p-4">
                       <div className="flex space-x-4">
-                        <button className="text-blue-500 hover:bg-blue-50 p-1">
+                        <button
+                          className="text-blue-500 hover:bg-blue-50 p-1"
+                          onClick={() => editMahasiswa(mahasiswa)}
+                        >
                           <Edit2 size={20} />
                         </button>
-                        <button className="text-red-500 hover:bg-red-50 p-1">
+                        <button
+                          className="text-red-500 hover:bg-red-50 p-1"
+                          onClick={() => deleteMahasiswa(mahasiswa.id)}
+                        >
                           <Trash2 size={20} />
                         </button>
                       </div>
@@ -227,6 +265,11 @@ function DataInternship() {
           </>
         )}
       </div>
+      <EditMahasiswaModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        mahasiswaData={selectedMahasiswa}
+      />
     </div>
   );
 }

@@ -164,13 +164,15 @@ const adminController = {
 
       // Add full URL for photo_profile
       if (updatedAdmin[0].photo_profile) {
-        updatedAdmin[0].photo_profile = `${req.protocol}://${req.get('host')}/uploads/profiles/${updatedAdmin[0].photo_profile}`;
+        updatedAdmin[0].photo_profile = `${req.protocol}://${req.get(
+          "host"
+        )}/uploads/profiles/${updatedAdmin[0].photo_profile}`;
       }
 
       res.json({
         success: true,
         message: "Profile berhasil diupdate",
-        data: updatedAdmin[0]
+        data: updatedAdmin[0],
       });
     } catch (error) {
       await connection.rollback();
@@ -469,29 +471,31 @@ const adminController = {
       if (!oldPassword || !newPassword) {
         return res.status(400).json({
           success: false,
-          message: 'Password lama dan baru harus diisi'
+          message: "Password lama dan baru harus diisi",
         });
       }
 
       // Get current admin
-      const [admins] = await db.execute(
-        'SELECT * FROM users WHERE id = ?',
-        [adminId]
-      );
+      const [admins] = await db.execute("SELECT * FROM users WHERE id = ?", [
+        adminId,
+      ]);
 
       if (admins.length === 0) {
         return res.status(404).json({
           success: false,
-          message: 'Admin tidak ditemukan'
+          message: "Admin tidak ditemukan",
         });
       }
 
       // Verify old password
-      const validPassword = await bcrypt.compare(oldPassword, admins[0].password);
+      const validPassword = await bcrypt.compare(
+        oldPassword,
+        admins[0].password
+      );
       if (!validPassword) {
         return res.status(401).json({
           success: false,
-          message: 'Password lama tidak sesuai'
+          message: "Password lama tidak sesuai",
         });
       }
 
@@ -499,7 +503,7 @@ const adminController = {
       if (newPassword.length < 6) {
         return res.status(400).json({
           success: false,
-          message: 'Password baru minimal 6 karakter'
+          message: "Password baru minimal 6 karakter",
         });
       }
 
@@ -507,20 +511,115 @@ const adminController = {
       const hashedPassword = await bcrypt.hash(newPassword, 10);
 
       // Update password
+      await db.execute("UPDATE users SET password = ? WHERE id = ?", [
+        hashedPassword,
+        adminId,
+      ]);
+
+      res.json({
+        success: true,
+        message: "Password berhasil diupdate",
+      });
+    } catch (error) {
+      console.error("Update password error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat update password",
+      });
+    }
+  },
+
+  deleteMahasiswa: async (req, res) => {
+    try {
+      const { id } = req.params;
+
+      // Verifikasi mahasiswa milik admin
+      const [mahasiswa] = await db.execute(
+        "SELECT * FROM mahasiswa WHERE id = ? AND admin_id = ?",
+        [id, req.user.id]
+      );
+
+      if (mahasiswa.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Data mahasiswa tidak ditemukan.",
+        });
+      }
+
+      // Hapus data mahasiswa
+      await db.execute("DELETE FROM mahasiswa WHERE id = ?", [id]);
+      await db.execute("DELETE FROM users WHERE id = ?", [
+        mahasiswa[0].user_id,
+      ]);
+
+      res.json({
+        success: true,
+        message: "Data mahasiswa berhasil dihapus.",
+      });
+    } catch (error) {
+      console.error("Delete mahasiswa error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Gagal menghapus data mahasiswa.",
+      });
+    }
+  },
+
+  updateMahasiswa: async (req, res) => {
+    try {
+      const { id } = req.params;
+      const {
+        nama,
+        nim,
+        institusi,
+        jenis_kelamin,
+        alamat,
+        no_telepon,
+        tanggal_mulai,
+        tanggal_selesai,
+      } = req.body;
+
+      // Verifikasi mahasiswa milik admin
+      const [mahasiswa] = await db.execute(
+        "SELECT * FROM mahasiswa WHERE id = ? AND admin_id = ?",
+        [id, req.user.id]
+      );
+
+      if (mahasiswa.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Data mahasiswa tidak ditemukan.",
+        });
+      }
+
+      // Update data mahasiswa
       await db.execute(
-        'UPDATE users SET password = ? WHERE id = ?',
-        [hashedPassword, adminId]
+        `UPDATE mahasiswa SET 
+         nama = ?, nim = ?, institusi = ?, jenis_kelamin = ?, 
+         alamat = ?, no_telepon = ?, tanggal_mulai = ?, tanggal_selesai = ?
+         WHERE id = ?`,
+        [
+          nama,
+          nim,
+          institusi,
+          jenis_kelamin,
+          alamat,
+          no_telepon,
+          tanggal_mulai,
+          tanggal_selesai,
+          id,
+        ]
       );
 
       res.json({
         success: true,
-        message: 'Password berhasil diupdate'
+        message: "Data mahasiswa berhasil diperbarui.",
       });
     } catch (error) {
-      console.error('Update password error:', error);
+      console.error("Update mahasiswa error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat update password'
+        message: "Gagal memperbarui data mahasiswa.",
       });
     }
   },

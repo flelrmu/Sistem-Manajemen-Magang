@@ -221,7 +221,7 @@ function IzinAbsensi() {
         <DialogActions>
           <Button onClick={() => setShowDialog(false)}>Cancel</Button>
           <Button onClick={confirmAction}>
-            Confirm {actionType}
+            {actionType}
           </Button>
         </DialogActions>
       </Dialog>

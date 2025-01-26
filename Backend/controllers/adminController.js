@@ -530,38 +530,53 @@ const adminController = {
   },
 
   deleteMahasiswa: async (req, res) => {
+    const connection = await db.getConnection();
     try {
+      await connection.beginTransaction();
       const { id } = req.params;
 
-      // Verifikasi mahasiswa milik admin
-      const [mahasiswa] = await db.execute(
+      // Verify mahasiswa ownership
+      const [mahasiswa] = await connection.execute(
         "SELECT * FROM mahasiswa WHERE id = ? AND admin_id = ?",
         [id, req.user.id]
       );
 
       if (mahasiswa.length === 0) {
+        await connection.rollback();
         return res.status(404).json({
           success: false,
           message: "Data mahasiswa tidak ditemukan.",
         });
       }
 
-      // Hapus data mahasiswa
-      await db.execute("DELETE FROM mahasiswa WHERE id = ?", [id]);
-      await db.execute("DELETE FROM users WHERE id = ?", [
+      // Delete related records in order
+      await connection.execute("DELETE FROM logbook WHERE mahasiswa_id = ?", [
+        id,
+      ]);
+      await connection.execute("DELETE FROM absensi WHERE mahasiswa_id = ?", [
+        id,
+      ]);
+      await connection.execute("DELETE FROM izin WHERE mahasiswa_id = ?", [id]);
+      await connection.execute("DELETE FROM mahasiswa WHERE id = ?", [id]);
+      await connection.execute("DELETE FROM users WHERE id = ?", [
         mahasiswa[0].user_id,
       ]);
+
+      await connection.commit();
 
       res.json({
         success: true,
         message: "Data mahasiswa berhasil dihapus.",
       });
     } catch (error) {
+      await connection.rollback();
       console.error("Delete mahasiswa error:", error);
       res.status(500).json({
         success: false,
         message: "Gagal menghapus data mahasiswa.",
       });
+    } finally {
+      connection.release();
     }
   },
 

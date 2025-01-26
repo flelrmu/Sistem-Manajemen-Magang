@@ -199,6 +199,45 @@ const absenController = {
     }
   },
 
+  getDashboardStats: async (req, res) => {
+    try {
+      const adminId = req.user.id;
+      const today = new Date().toISOString().split('T')[0];
+  
+      // Get total active students
+      const [totalMahasiswa] = await db.execute(
+        'SELECT COUNT(*) as total FROM mahasiswa WHERE admin_id = ? AND status = "aktif"',
+        [adminId]
+      );
+  
+      // Get today's attendance stats
+      const [attendanceStats] = await db.execute(
+        `SELECT 
+          COUNT(CASE WHEN status_kehadiran = 'hadir' THEN 1 END) as hadir,
+          COUNT(CASE WHEN status_kehadiran = 'izin' THEN 1 END) as izin,
+          COUNT(CASE WHEN status_kehadiran = 'alpha' THEN 1 END) as alpha
+         FROM absensi a
+         JOIN mahasiswa m ON a.mahasiswa_id = m.id 
+         WHERE m.admin_id = ? AND DATE(a.tanggal) = ?`,
+        [adminId, today]
+      );
+  
+      res.json({
+        success: true,
+        data: {
+          totalMahasiswa: totalMahasiswa[0].total,
+          ...attendanceStats[0]
+        }
+      });
+    } catch (error) {
+      console.error('Get dashboard stats error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat mengambil data dashboard'
+      });
+    }
+  },
+
   // Get statistik absensi
   getAbsensiStatistics: async (req, res) => {
     try {

@@ -7,6 +7,8 @@ const validation = require('../middleware/validation');
 // Middleware untuk memverifikasi token untuk semua routes
 router.use(auth.verifyToken);
 
+router.get('/dashboard', auth.isAdmin, absenController.getDashboardStats);
+
 // Route untuk riwayat absensi
 router.get('/riwayat', absenController.getRiwayatAbsensi);
 

@@ -52,8 +52,7 @@ const NavbarUser = ({ type }) => {
                     {user?.nama || "Mahasiswa"}
                   </span>
                   <span className="text-xs text-gray-500 group-hover:text-gray-700 duration-500">
-                    {user?.role?.charAt(0).toUpperCase() +
-                      user?.role?.slice(1) || "Mahasiswa"}
+                    Magang
                   </span>
                 </div>
                 {user?.photo_profile ? (

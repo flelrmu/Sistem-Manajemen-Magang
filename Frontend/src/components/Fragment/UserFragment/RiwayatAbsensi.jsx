@@ -21,7 +21,7 @@ function RiwayatAbsensi() {
               <th className="text-left py-4">Status</th>
               <th className="text-left py-4">Waktu</th>
               <th className="text-left py-4">Ketepatan Waktu</th>
-              <th className="text-left py-4">Keterangan</th>
+              <th className="text-left py-4">Lokasi(dalam/luar radius)</th>
             </tr>
           </thead>
           <tbody>

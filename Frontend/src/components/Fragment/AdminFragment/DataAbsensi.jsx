@@ -57,6 +57,10 @@ function DataAbsensi() {
             ? new Date(record.waktu_keluar).toLocaleTimeString("id-ID")
             : "-",
           status_kehadiran: record.status_kehadiran,
+
+          dalam_radius: record.dalam_radius,
+          latitude_scan: record.latitude_scan,
+          longitude_scan: record.longitude_scan,
         }));
 
         setAttendanceData(formattedData);
@@ -69,7 +73,6 @@ function DataAbsensi() {
     }
   };
 
-
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
     setCurrentPage(1); // Reset to first page when filters change
@@ -81,7 +84,6 @@ function DataAbsensi() {
       fetchAttendanceData();
     }
   }, [user, currentPage, filters]);
-  
 
   if (loading) {
     return (
@@ -138,7 +140,8 @@ function DataAbsensi() {
                   <th className="p-4 text-left">Tanggal</th>
                   <th className="p-4 text-left">Waktu Masuk</th>
                   <th className="p-4 text-left">Waktu Keluar</th>
-                  <th className="p-4 text-left">Status Kehadiran</th>
+                  <th className="p-4 text-left">Status</th>
+                  <th className="p-4 text-left">Lokasi</th>
                 </tr>
               </thead>
               <tbody>
@@ -157,11 +160,36 @@ function DataAbsensi() {
                             ? "bg-yellow-100 text-[#F59E0B]"
                             : record.status_kehadiran === "alpha"
                             ? "bg-red-100 text-red-800"
-                        : "bg-gray-100 text-gray-800"
+                            : "bg-gray-100 text-gray-800"
                         }`}
                       >
                         {record.status_kehadiran}
                       </span>
+                    </td>
+                    <td className="p-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          record.dalam_radius
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                        title={`Latitude: ${record.latitude_scan}, Longitude: ${record.longitude_scan}`}
+                      >
+                        {record.dalam_radius ? "Dalam Radius" : "Luar Radius"}
+                      </span>
+                      {record.latitude_scan && record.longitude_scan && (
+                        <button
+                          onClick={() =>
+                            window.open(
+                              `https://www.google.com/maps?q=${record.latitude_scan},${record.longitude_scan}`,
+                              "_blank"
+                            )
+                          }
+                          className="ml-2 text-blue-600 hover:text-blue-800 text-sm underline"
+                        >
+                          Lihat Peta
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

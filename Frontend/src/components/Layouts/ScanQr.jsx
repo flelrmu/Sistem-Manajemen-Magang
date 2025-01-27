@@ -1,8 +1,17 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import QrScanner from "react-qr-scanner";
-import { Link } from "react-router-dom";
-import { AlertCircle, CheckCircle2 } from "lucide-react";
-import { Alert, AlertTitle, AlertDescription } from "@chakra-ui/alert";
+import { useNavigate } from "react-router-dom";
+import { Alert, AlertTitle } from "@mui/material";
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Button,
+  CircularProgress,
+} from "@mui/material";
+import { useAuth } from "../Context/UserContext";
 import Background from "../Elements/Items/bg";
 import Logo from "../Elements/Logo/Logo";
 
@@ -10,6 +19,15 @@ function ScanQr() {
   const [scanResult, setScanResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState(null);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate("/login");
+    }
+  }, [user, navigate]);
 
   const handleScan = async (data) => {
     if (data && !isLoading && data.text) {
@@ -50,7 +68,7 @@ function ScanQr() {
           }),
         };
 
-        const response = await fetch("/api/absen/scan", {
+        const response = await fetch("http://localhost:3000/api/absen/scan", {
           method: "POST",
           headers: {
             Accept: "application/json",
@@ -61,8 +79,8 @@ function ScanQr() {
         });
 
         if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(errorText);
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Gagal memproses absensi");
         }
 
         const result = await response.json();
@@ -74,6 +92,7 @@ function ScanQr() {
             message: result.message,
           });
           setScanResult(result);
+          setShowSuccessDialog(true);
         } else {
           throw new Error(result.message || "Gagal memproses absensi");
         }
@@ -101,6 +120,8 @@ function ScanQr() {
   const handleDismiss = () => {
     setAlert(null);
     setScanResult(null);
+    setShowSuccessDialog(false);
+    window.location.reload();
   };
 
   const scannerSize = 280;
@@ -127,37 +148,13 @@ function ScanQr() {
                 Scan QR Code Absensi
               </h2>
 
-              {alert && (
-                <Alert
-                  className={`mb-4 ${
-                    alert.type === "success"
-                      ? "bg-green-50 border-green-200"
-                      : "bg-red-50 border-red-200"
-                  }`}
+              {alert && !showSuccessDialog && (
+                <Alert 
+                  severity={alert.type}
+                  sx={{ mb: 2 }}
                 >
-                  {alert.type === "success" ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-4 w-4 text-red-600" />
-                  )}
-                  <AlertTitle
-                    className={
-                      alert.type === "success"
-                        ? "text-green-800"
-                        : "text-red-800"
-                    }
-                  >
-                    {alert.title}
-                  </AlertTitle>
-                  <AlertDescription
-                    className={
-                      alert.type === "success"
-                        ? "text-green-700"
-                        : "text-red-700"
-                    }
-                  >
-                    {alert.message}
-                  </AlertDescription>
+                  <AlertTitle>{alert.title}</AlertTitle>
+                  {alert.message}
                 </Alert>
               )}
 
@@ -197,25 +194,27 @@ function ScanQr() {
 
               {isLoading && (
                 <div className="flex items-center justify-center mb-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-500"></div>
+                  <CircularProgress />
                 </div>
               )}
 
               <div className="text-center space-y-4">
                 {scanResult ? (
-                  <button
+                  <Button
+                    variant="contained"
+                    color="success"
                     onClick={handleDismiss}
-                    className="bg-green-500 text-white px-8 py-2 rounded-md hover:bg-green-600 transition-colors"
                   >
                     Scan Lagi
-                  </button>
+                  </Button>
                 ) : (
-                  <Link
-                    to="/"
-                    className="bg-red-500 text-white px-8 py-2 rounded-md hover:bg-red-600 transition-colors"
+                  <Button
+                    variant="contained"
+                    color="error"
+                    onClick={() => navigate("/")}
                   >
                     Tutup
-                  </Link>
+                  </Button>
                 )}
               </div>
             </div>
@@ -223,6 +222,41 @@ function ScanQr() {
         </div>
         <Background />
       </div>
+
+      {/* Success Dialog */}
+      <Dialog
+        open={showSuccessDialog}
+        onClose={() => setShowSuccessDialog(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>Absensi Berhasil!</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            {scanResult?.message || "Proses absensi telah berhasil dilakukan."}
+            {scanResult?.data && (
+              <div style={{ marginTop: 16 }}>
+                <p>Nama: {scanResult.data.nama}</p>
+                <p>Waktu: {scanResult.data.waktu}</p>
+                <p>Status: {scanResult.data.status}</p>
+                {scanResult.data.dalam_radius !== undefined && (
+                  <p>
+                    Lokasi:{" "}
+                    {scanResult.data.dalam_radius
+                      ? "Dalam radius"
+                      : "Di luar radius"}
+                  </p>
+                )}
+              </div>
+            )}
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleDismiss} color="primary" autoFocus>
+            OK
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

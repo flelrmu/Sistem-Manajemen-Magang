@@ -5,14 +5,22 @@ const qrcodeUtil = require("../utils/qrcode");
 const absenController = {
   // Scan QR Code untuk absensi
   scanQR: async (req, res) => {
+    const connection = await db.getConnection();
     try {
+      await connection.beginTransaction();
+
+      // Verifikasi bahwa user yang login adalah mahasiswa
+      if (req.user.role !== "mahasiswa") {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Akses ditolak. Hanya mahasiswa yang dapat melakukan absensi",
+        });
+      }
+
       const { qrData, latitude, longitude, deviceInfo } = req.body;
 
-      // Debug log
-      console.log("Received QR Data:", qrData);
-      console.log("QR Data type:", typeof qrData);
-
-      // Validasi QR code
+      // Validate QR code
       const validationResult = qrcodeUtil.validateQRContent(qrData);
       if (!validationResult.isValid) {
         return res.status(400).json({
@@ -23,8 +31,16 @@ const absenController = {
 
       const mahasiswa_id = validationResult.data.mahasiswa_id;
 
+      // Verifikasi bahwa QR code milik mahasiswa yang login
+      if (mahasiswa_id !== req.user.mahasiswa_id) {
+        return res.status(403).json({
+          success: false,
+          message: "QR Code tidak sesuai dengan akun yang login",
+        });
+      }
+
       // Get mahasiswa data
-      const [mahasiswa] = await db.execute(
+      const [mahasiswa] = await connection.execute(
         'SELECT * FROM mahasiswa WHERE id = ? AND status = "aktif"',
         [mahasiswa_id]
       );
@@ -37,7 +53,7 @@ const absenController = {
       }
 
       // Get active setting
-      const [settings] = await db.execute(
+      const [settings] = await connection.execute(
         "SELECT * FROM setting_absensi WHERE is_active = true"
       );
 
@@ -53,7 +69,10 @@ const absenController = {
       // Check if within radius
       const distance = geolib.getDistance(
         { latitude, longitude },
-        { latitude: setting.latitude_pusat, longitude: setting.longitude_pusat }
+        {
+          latitude: setting.latitude_pusat,
+          longitude: setting.longitude_pusat,
+        }
       );
 
       const dalamRadius = distance <= setting.radius_meter;
@@ -64,12 +83,12 @@ const absenController = {
       const currentDate = now.toISOString().split("T")[0];
 
       // Check if already checked in today
-      const [existingAbsensi] = await db.execute(
+      const [existingAbsensi] = await connection.execute(
         "SELECT * FROM absensi WHERE mahasiswa_id = ? AND DATE(tanggal) = ?",
         [mahasiswa_id, currentDate]
       );
 
-      // Tentukan status masuk
+      // Determine status
       let statusMasuk = "tepat_waktu";
       if (currentTime > setting.jam_masuk) {
         const timeDiff =
@@ -77,6 +96,7 @@ const absenController = {
             new Date(`2000/01/01 ${setting.jam_masuk}`)) /
           1000 /
           60;
+
         if (timeDiff > setting.batas_telat_menit) {
           statusMasuk = "telat";
         }
@@ -84,7 +104,7 @@ const absenController = {
 
       if (existingAbsensi.length === 0) {
         // Create new attendance record
-        await db.execute(
+        await connection.execute(
           `INSERT INTO absensi (
             mahasiswa_id, setting_absensi_id, tanggal,
             waktu_masuk, status_masuk, status_kehadiran,
@@ -103,10 +123,19 @@ const absenController = {
           ]
         );
 
+        await connection.commit();
+
         return res.json({
           success: true,
           message: "Absen masuk berhasil",
-          status: statusMasuk,
+          data: {
+            status: statusMasuk,
+            dalam_radius: dalamRadius,
+            nama: mahasiswa[0].nama,
+            waktu: currentTime,
+            latitude: latitude,
+            longitude: longitude,
+          },
         });
       } else {
         // Check if can check out
@@ -118,22 +147,35 @@ const absenController = {
         }
 
         // Update existing record with check out time
-        await db.execute(
+        await connection.execute(
           "UPDATE absensi SET waktu_keluar = NOW() WHERE id = ?",
           [existingAbsensi[0].id]
         );
 
+        await connection.commit();
+
         return res.json({
           success: true,
           message: "Absen pulang berhasil",
+          data: {
+            nama: mahasiswa[0].nama,
+            waktu: currentTime,
+            latitude: latitude,
+            longitude: longitude,
+          },
         });
       }
     } catch (error) {
+      await connection.rollback();
       console.error("Scan QR error:", error);
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat proses absensi",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
+    } finally {
+      connection.release();
     }
   },
 
@@ -202,14 +244,14 @@ const absenController = {
   getDashboardStats: async (req, res) => {
     try {
       const adminId = req.user.id;
-      const today = new Date().toISOString().split('T')[0];
-  
+      const today = new Date().toISOString().split("T")[0];
+
       // Get total active students
       const [totalMahasiswa] = await db.execute(
         'SELECT COUNT(*) as total FROM mahasiswa WHERE admin_id = ? AND status = "aktif"',
         [adminId]
       );
-  
+
       // Get today's attendance stats
       const [attendanceStats] = await db.execute(
         `SELECT 
@@ -221,19 +263,19 @@ const absenController = {
          WHERE m.admin_id = ? AND DATE(a.tanggal) = ?`,
         [adminId, today]
       );
-  
+
       res.json({
         success: true,
         data: {
           totalMahasiswa: totalMahasiswa[0].total,
-          ...attendanceStats[0]
-        }
+          ...attendanceStats[0],
+        },
       });
     } catch (error) {
-      console.error('Get dashboard stats error:', error);
+      console.error("Get dashboard stats error:", error);
       res.status(500).json({
         success: false,
-        message: 'Terjadi kesalahan saat mengambil data dashboard'
+        message: "Terjadi kesalahan saat mengambil data dashboard",
       });
     }
   },

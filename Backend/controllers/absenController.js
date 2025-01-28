@@ -241,6 +241,51 @@ const absenController = {
     }
   },
 
+  getAbsensi: async (req, res) => {
+    try {
+      const mahasiswaId = req.params.id || req.user.mahasiswa_id;
+
+      let query = `
+        SELECT 
+          a.id,
+          a.tanggal,
+          a.waktu_masuk,
+          a.waktu_keluar,
+          a.status_masuk,
+          a.status_kehadiran,
+          a.dalam_radius,
+          a.latitude_scan,
+          a.longitude_scan,
+          m.nama AS mahasiswa_nama,
+          m.nim
+        FROM absensi a
+        JOIN mahasiswa m ON a.mahasiswa_id = m.id
+        WHERE a.mahasiswa_id = ?
+        ORDER BY a.tanggal DESC, a.waktu_masuk DESC
+      `;
+
+      const [riwayat] = await db.execute(query, [mahasiswaId]);
+
+      // Optional: Get total for pagination
+      const [total] = await db.execute(
+        "SELECT COUNT(*) as total FROM absensi WHERE mahasiswa_id = ?",
+        [mahasiswaId]
+      );
+
+      res.status(200).json({
+        success: true,
+        data: riwayat,
+        total: total[0].total,
+      });
+    } catch (error) {
+      console.error("Get riwayat absensi error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil riwayat absensi",
+      });
+    }
+  },
+
   getDashboardStats: async (req, res) => {
     try {
       const adminId = req.user.id;

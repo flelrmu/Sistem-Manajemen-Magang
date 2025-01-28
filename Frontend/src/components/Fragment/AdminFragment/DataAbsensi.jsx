@@ -177,19 +177,6 @@ function DataAbsensi() {
                       >
                         {record.dalam_radius ? "Dalam Radius" : "Luar Radius"}
                       </span>
-                      {record.latitude_scan && record.longitude_scan && (
-                        <button
-                          onClick={() =>
-                            window.open(
-                              `https://www.google.com/maps?q=${record.latitude_scan},${record.longitude_scan}`,
-                              "_blank"
-                            )
-                          }
-                          className="ml-2 text-blue-600 hover:text-blue-800 text-sm underline"
-                        >
-                          Lihat Peta
-                        </button>
-                      )}
                     </td>
                   </tr>
                 ))}

@@ -12,6 +12,8 @@ router.get('/dashboard', auth.isAdmin, absenController.getDashboardStats);
 // Route untuk riwayat absensi
 router.get('/riwayat', absenController.getRiwayatAbsensi);
 
+router.get('/absensi', absenController.getAbsensi);
+
 // Route untuk riwayat absensi specific mahasiswa
 router.get('/riwayat/:id', absenController.getRiwayatAbsensi);
 

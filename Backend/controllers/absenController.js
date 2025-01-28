@@ -382,6 +382,70 @@ const absenController = {
     }
   },
 
+  // Tambahkan di absenController.js
+
+  // Get statistik dashboard per hari
+  getDashboardStatisticsPerDay: async (req, res) => {
+    try {
+      const adminId = req.user.id;
+      const today = new Date().toISOString().split("T")[0];
+
+      // Get total internship aktif
+      const [totalInternship] = await db.execute(
+        'SELECT COUNT(*) as total FROM mahasiswa WHERE admin_id = ? AND status = "aktif"',
+        [adminId]
+      );
+
+      // Get kehadiran hari ini
+      const [kehadiranHariIni] = await db.execute(
+        `SELECT COUNT(*) as total 
+       FROM absensi a
+       JOIN mahasiswa m ON a.mahasiswa_id = m.id 
+       WHERE m.admin_id = ? 
+       AND DATE(a.tanggal) = ?
+       AND a.status_kehadiran = 'hadir'`,
+        [adminId, today]
+      );
+
+      // Get pengajuan izin hari ini
+      const [izinHariIni] = await db.execute(
+        `SELECT COUNT(*) as total 
+       FROM izin i
+       JOIN mahasiswa m ON i.mahasiswa_id = m.id 
+       WHERE m.admin_id = ? 
+       AND DATE(i.created_at) = ?
+       AND i.status = 'pending'`,
+        [adminId, today]
+      );
+
+      // Get logbook pending
+      const [logbookPending] = await db.execute(
+        `SELECT COUNT(*) as total 
+       FROM logbook l
+       JOIN mahasiswa m ON l.mahasiswa_id = m.id 
+       WHERE m.admin_id = ? 
+       AND l.status = 'pending'`,
+        [adminId]
+      );
+
+      res.json({
+        success: true,
+        data: {
+          totalInternship: totalInternship[0].total || 0,
+          kehadiranHariIni: kehadiranHariIni[0].total || 0,
+          izinHariIni: izinHariIni[0].total || 0,
+          logbookPending: logbookPending[0].total || 0,
+        },
+      });
+    } catch (error) {
+      console.error("Get dashboard statistics error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil statistik dashboard",
+      });
+    }
+  },
+
   // Pengajuan izin
   getKategoriIzin: async (req, res) => {
     try {

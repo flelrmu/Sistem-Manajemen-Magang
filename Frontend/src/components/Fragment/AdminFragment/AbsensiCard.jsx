@@ -63,7 +63,7 @@ function AbsensiCard() {
 
   const getColorClass = (title) => {
     switch (title) {
-      case "Total Mahasiswa":
+      case "Total Intership":
         return "text-black";
       case "Hadir":
         return "text-green-500";
@@ -77,7 +77,7 @@ function AbsensiCard() {
   };
 
   const statsData = [
-    { title: "Total Mahasiswa", value: stats.totalMahasiswa },
+    { title: "Total Intership", value: stats.totalMahasiswa },
     { title: "Hadir", value: stats.hadir },
     { title: "Izin", value: stats.izin },
     { title: "Alpha", value: stats.alpha }

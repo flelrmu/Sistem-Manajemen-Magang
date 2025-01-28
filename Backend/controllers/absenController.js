@@ -4,19 +4,11 @@ const qrcodeUtil = require("../utils/qrcode");
 
 const absenController = {
   // Scan QR Code untuk absensi
+  // Add new endpoint for public scan
   scanQR: async (req, res) => {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
-
-      // Verifikasi bahwa user yang login adalah mahasiswa
-      if (req.user.role !== "mahasiswa") {
-        return res.status(403).json({
-          success: false,
-          message:
-            "Akses ditolak. Hanya mahasiswa yang dapat melakukan absensi",
-        });
-      }
 
       const { qrData, latitude, longitude, deviceInfo } = req.body;
 
@@ -30,14 +22,6 @@ const absenController = {
       }
 
       const mahasiswa_id = validationResult.data.mahasiswa_id;
-
-      // Verifikasi bahwa QR code milik mahasiswa yang login
-      if (mahasiswa_id !== req.user.mahasiswa_id) {
-        return res.status(403).json({
-          success: false,
-          message: "QR Code tidak sesuai dengan akun yang login",
-        });
-      }
 
       // Get mahasiswa data
       const [mahasiswa] = await connection.execute(
@@ -106,11 +90,11 @@ const absenController = {
         // Create new attendance record
         await connection.execute(
           `INSERT INTO absensi (
-            mahasiswa_id, setting_absensi_id, tanggal,
-            waktu_masuk, status_masuk, status_kehadiran,
-            latitude_scan, longitude_scan, dalam_radius,
-            device_info
-          ) VALUES (?, ?, ?, NOW(), ?, 'hadir', ?, ?, ?, ?)`,
+          mahasiswa_id, setting_absensi_id, tanggal,
+          waktu_masuk, status_masuk, status_kehadiran,
+          latitude_scan, longitude_scan, dalam_radius,
+          device_info
+        ) VALUES (?, ?, ?, NOW(), ?, 'hadir', ?, ?, ?, ?)`,
           [
             mahasiswa_id,
             setting.id,
@@ -133,8 +117,6 @@ const absenController = {
             dalam_radius: dalamRadius,
             nama: mahasiswa[0].nama,
             waktu: currentTime,
-            latitude: latitude,
-            longitude: longitude,
           },
         });
       } else {
@@ -160,8 +142,6 @@ const absenController = {
           data: {
             nama: mahasiswa[0].nama,
             waktu: currentTime,
-            latitude: latitude,
-            longitude: longitude,
           },
         });
       }
@@ -171,8 +151,6 @@ const absenController = {
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat proses absensi",
-        error:
-          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     } finally {
       connection.release();

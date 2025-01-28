@@ -4,6 +4,13 @@ const absenController = require('../controllers/absenController');
 const auth = require('../middleware/auth');
 const validation = require('../middleware/validation');
 
+// QR Code scan
+router.post('/scan',
+  validation.validateAbsensi,
+  validation.handleValidationErrors,
+  absenController.scanQR
+);
+
 // Middleware untuk memverifikasi token untuk semua routes
 router.use(auth.verifyToken);
 
@@ -19,12 +26,6 @@ router.get('/absensi', absenController.getAbsensi);
 // Route untuk riwayat absensi specific mahasiswa
 router.get('/riwayat/:id', absenController.getRiwayatAbsensi);
 
-// QR Code scan
-router.post('/scan',
-  validation.validateAbsensi,
-  validation.handleValidationErrors,
-  absenController.scanQR
-);
 
 // Route untuk statistik absensi
 router.get('/statistics', absenController.getAbsensiStatistics);

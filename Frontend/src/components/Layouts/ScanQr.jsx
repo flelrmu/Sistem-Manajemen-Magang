@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import QrScanner from "react-qr-scanner";
 import { useNavigate } from "react-router-dom";
 import { Alert, AlertTitle } from "@mui/material";
@@ -11,7 +11,6 @@ import {
   Button,
   CircularProgress,
 } from "@mui/material";
-import { useAuth } from "../Context/UserContext";
 import Background from "../Elements/Items/bg";
 import Logo from "../Elements/Logo/Logo";
 
@@ -20,14 +19,7 @@ function ScanQr() {
   const [isLoading, setIsLoading] = useState(false);
   const [alert, setAlert] = useState(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
-  const { user } = useAuth();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/login");
-    }
-  }, [user, navigate]);
 
   const handleScan = async (data) => {
     if (data && !isLoading && data.text) {
@@ -73,7 +65,6 @@ function ScanQr() {
           headers: {
             Accept: "application/json",
             "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
           },
           body: JSON.stringify(requestData),
         });
@@ -149,10 +140,7 @@ function ScanQr() {
               </h2>
 
               {alert && !showSuccessDialog && (
-                <Alert 
-                  severity={alert.type}
-                  sx={{ mb: 2 }}
-                >
+                <Alert severity={alert.type} sx={{ mb: 2 }}>
                   <AlertTitle>{alert.title}</AlertTitle>
                   {alert.message}
                 </Alert>

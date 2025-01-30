@@ -171,6 +171,9 @@ const absenController = {
           a.waktu_keluar,
           a.status_masuk,
           a.status_kehadiran,
+          a.dalam_radius,
+          a.latitude_scan,
+          a.longitude_scan,
           m.nama AS mahasiswa_nama,
           m.nim,
           m.admin_id
@@ -527,42 +530,59 @@ const absenController = {
         [status, alasan_response, izinId]
       );
 
-      // If approved, update absensi status
+      // If approved, immediately create absensi records
       if (status === "approved") {
+        // Get active setting
+        const [settings] = await connection.execute(
+          "SELECT * FROM setting_absensi WHERE is_active = true"
+        );
+
+        if (settings.length === 0) {
+          throw new Error("Pengaturan absensi tidak ditemukan");
+        }
+
+        const setting = settings[0];
         const startDate = new Date(izin[0].tanggal_mulai);
         const endDate = new Date(izin[0].tanggal_selesai);
 
-        // Loop through each day in the permission period
         for (
           let date = new Date(startDate);
           date <= endDate;
           date.setDate(date.getDate() + 1)
         ) {
-          const currentDate = date.toISOString().split("T")[0];
+          // Gunakan format YYYY-MM-DD langsung dari tanggal lokal
+          const currentDate =
+            date.getFullYear() +
+            "-" +
+            String(date.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(date.getDate()).padStart(2, "0");
 
-          // Check if absensi exists for this date
+          // Cek existing absensi
           const [existingAbsensi] = await connection.execute(
             "SELECT id FROM absensi WHERE mahasiswa_id = ? AND DATE(tanggal) = ?",
             [izin[0].mahasiswa_id, currentDate]
           );
 
           if (existingAbsensi.length === 0) {
-            // Create new absensi record with izin status
             await connection.execute(
               `INSERT INTO absensi (
-                mahasiswa_id, setting_absensi_id, tanggal,
-                status_kehadiran, dalam_radius
-              ) VALUES (?,
-                (SELECT id FROM setting_absensi WHERE is_active = 1 LIMIT 1),
-                ?, 'izin', true
-              )`,
-              [izin[0].mahasiswa_id, currentDate]
-            );
-          } else {
-            // Update existing absensi to izin status
-            await connection.execute(
-              'UPDATE absensi SET status_kehadiran = "izin" WHERE id = ?',
-              [existingAbsensi[0].id]
+                mahasiswa_id,
+                setting_absensi_id,
+                tanggal,
+                waktu_masuk,
+                waktu_keluar,
+                status_masuk,
+                status_kehadiran,
+                dalam_radius
+              ) VALUES (?, ?, ?, ?, ?, 'tepat_waktu', 'izin', true)`,
+              [
+                izin[0].mahasiswa_id,
+                setting.id,
+                currentDate,
+                setting.jam_masuk,
+                setting.jam_pulang,
+              ]
             );
           }
         }
@@ -570,11 +590,24 @@ const absenController = {
 
       await connection.commit();
 
+      // Get updated data for response
+      const [updatedIzin] = await connection.execute(
+        `SELECT 
+        i.*,
+        m.nama as mahasiswa_nama,
+        m.nim
+       FROM izin i
+       JOIN mahasiswa m ON i.mahasiswa_id = m.id
+       WHERE i.id = ?`,
+        [izinId]
+      );
+
       res.json({
         success: true,
         message: `Izin berhasil ${
           status === "approved" ? "disetujui" : "ditolak"
         }`,
+        data: updatedIzin[0],
       });
     } catch (error) {
       await connection.rollback();
@@ -582,6 +615,8 @@ const absenController = {
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat memproses izin",
+        error:
+          process.env.NODE_ENV === "development" ? error.message : undefined,
       });
     } finally {
       connection.release();

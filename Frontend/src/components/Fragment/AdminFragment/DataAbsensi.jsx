@@ -57,7 +57,6 @@ function DataAbsensi() {
             ? new Date(record.waktu_keluar).toLocaleTimeString("id-ID")
             : "-",
           status_kehadiran: record.status_kehadiran,
-
           dalam_radius: record.dalam_radius,
           latitude_scan: record.latitude_scan,
           longitude_scan: record.longitude_scan,
@@ -75,10 +74,9 @@ function DataAbsensi() {
 
   const handleFilterChange = (newFilters) => {
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1);
   };
 
-  // Effect for fetching data when filters or page changes
   useEffect(() => {
     if (user && user.role === "admin") {
       fetchAttendanceData();
@@ -125,64 +123,85 @@ function DataAbsensi() {
     <div className="space-y-4">
       <FilterAbsensi onFilterChange={handleFilterChange} />
 
-      {/* Attendance Table */}
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {attendanceData.length === 0 ? (
           <div className="p-4 text-center text-gray-600">
             Tidak ada data absensi yang tersedia untuk filter yang dipilih.
           </div>
         ) : (
-          <>
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="p-4 text-left">Nama</th>
-                  <th className="p-4 text-left">Tanggal</th>
-                  <th className="p-4 text-left">Waktu Masuk</th>
-                  <th className="p-4 text-left">Waktu Keluar</th>
-                  <th className="p-4 text-left">Status</th>
-                  <th className="p-4 text-left">Lokasi</th>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-gray-50">
+                <th className="p-4 text-left">Nama</th>
+                <th className="p-4 text-left">Tanggal</th>
+                {/* Only show these columns if there's at least one non-izin record */}
+                {attendanceData.some(record => record.status_kehadiran === "hadir") && (
+                  <>
+                    <th className="p-4 text-left">Waktu Masuk</th>
+                    <th className="p-4 text-left">Waktu Keluar</th>
+                    <th className="p-4 text-left">Lokasi</th>
+                  </>
+                )}
+                <th className="p-4 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {attendanceData.map((record, index) => (
+                <tr key={record.id || index} className="border-t">
+                  <td className="p-4">{record.nama}</td>
+                  <td className="p-4">{record.tanggal}</td>
+                  {/* Only show these cells if the status is "hadir" */}
+                  {record.status_kehadiran === "hadir" && (
+                    <>
+                      <td className="p-4">{record.waktu_masuk}</td>
+                      <td className="p-4">{record.waktu_keluar}</td>
+                      <td className="p-4">
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm ${
+                            record.dalam_radius
+                              ? "bg-green-100 text-green-800"
+                              : "bg-red-100 text-red-800"
+                          }`}
+                          title={`Latitude: ${record.latitude_scan}, Longitude: ${record.longitude_scan}`}
+                        >
+                          {record.dalam_radius ? "Dalam Radius" : "Luar Radius"}
+                        </span>
+                      </td>
+                    </>
+                  )}
+                  {/* Add empty cells for "izin" status to maintain table structure */}
+                  {record.status_kehadiran === "izin" && attendanceData.some(r => r.status_kehadiran === "hadir") && (
+                    <>
+                      <td className="p-4">-</td>
+                      <td className="p-4">-</td>
+                      <td className="p-4">-</td>
+                    </>
+                  )}
+                  <td className="p-4">
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm ${
+                        record.status_kehadiran === "hadir"
+                          ? "bg-green-100 text-green-800"
+                          : record.status_kehadiran === "izin"
+                          ? "bg-yellow-100 text-[#F59E0B]"
+                          : record.status_kehadiran === "alpha"
+                          ? "bg-red-100 text-red-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {record.status_kehadiran === "hadir" 
+                        ? "Hadir" 
+                        : record.status_kehadiran === "izin"
+                        ? "Izin"
+                        : record.status_kehadiran === "alpha"
+                        ? "Alpha"
+                        : record.status_kehadiran}
+                    </span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {attendanceData.map((record, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="p-4">{record.nama}</td>
-                    <td className="p-4">{record.tanggal}</td>
-                    <td className="p-4">{record.waktu_masuk}</td>
-                    <td className="p-4">{record.waktu_keluar}</td>
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm ${
-                          record.status_kehadiran === "hadir"
-                            ? "bg-green-100 text-green-800"
-                            : record.status_kehadiran === "izin"
-                            ? "bg-yellow-100 text-[#F59E0B]"
-                            : record.status_kehadiran === "alpha"
-                            ? "bg-red-100 text-red-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {record.status_kehadiran}
-                      </span>
-                    </td>
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-sm ${
-                          record.dalam_radius
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
-                        title={`Latitude: ${record.latitude_scan}, Longitude: ${record.longitude_scan}`}
-                      >
-                        {record.dalam_radius ? "Dalam Radius" : "Luar Radius"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

@@ -14,6 +14,9 @@ router.post('/scan',
 // Middleware untuk memverifikasi token untuk semua routes
 router.use(auth.verifyToken);
 
+// Add this route in your absenRoutes.js file
+router.get('/attendance-stats', absenController.getAttendanceStats);
+
 router.get('/dashboard/stats', auth.isAdmin, absenController.getDashboardStatisticsPerDay);
 
 router.get('/dashboard', auth.isAdmin, absenController.getDashboardStats);

@@ -208,7 +208,6 @@ function ScanQr() {
             </div>
           </div>
         </div>
-        <Background />
       </div>
 
       {/* Success Dialog */}
@@ -245,6 +244,7 @@ function ScanQr() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Background />
     </div>
   );
 }

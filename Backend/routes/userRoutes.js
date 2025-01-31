@@ -69,6 +69,8 @@ const handleUploadError = (error, req, res, next) => {
 // Protect all routes with token verification
 router.use(auth.verifyToken);
 
+router.get('/profileQr', userController.getMahasiswaProfile);
+
 // Profile routes
 router.get('/profile', (req, res, next) => {
   console.log('GET /profile - User:', req.user);

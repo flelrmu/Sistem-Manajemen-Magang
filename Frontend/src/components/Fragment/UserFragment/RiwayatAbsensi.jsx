@@ -111,7 +111,7 @@ function RiwayatAbsensi() {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-6 mt-8 ">
       <h2 className="text-xl font-semibold mb-6">Riwayat Absensi</h2>
       <div className="overflow-x-auto">
         {attendanceData.length === 0 ? (

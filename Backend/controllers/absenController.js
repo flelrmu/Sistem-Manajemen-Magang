@@ -222,6 +222,65 @@ const absenController = {
     }
   },
 
+  // Add this function to absenController.js
+
+  getAttendanceStats: async (req, res) => {
+    try {
+      const mahasiswaId = req.user.mahasiswa_id;
+
+      // Get internship period and total days
+      const [internshipData] = await db.execute(
+        `SELECT 
+        tanggal_mulai, 
+        tanggal_selesai,
+        DATEDIFF(tanggal_selesai, tanggal_mulai) + 1 as total_days
+       FROM mahasiswa 
+       WHERE id = ?`,
+        [mahasiswaId]
+      );
+
+      if (internshipData.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Data magang tidak ditemukan",
+        });
+      }
+
+      // Get attendance statistics
+      const [stats] = await db.execute(
+        `SELECT 
+        COUNT(*) as total_attendance,
+        COUNT(CASE WHEN status_kehadiran = 'hadir' AND status_masuk = 'tepat_waktu' THEN 1 END) as hadir_tepat,
+        COUNT(CASE WHEN status_kehadiran = 'izin' THEN 1 END) as izin,
+        COUNT(CASE WHEN status_kehadiran = 'alpha' THEN 1 END) as alpha
+       FROM absensi 
+       WHERE mahasiswa_id = ?`,
+        [mahasiswaId]
+      );
+
+      res.json({
+        success: true,
+        data: {
+          total_days: internshipData[0].total_days,
+          total_attendance: stats[0].total_attendance,
+          hadir_tepat: stats[0].hadir_tepat,
+          izin: stats[0].izin,
+          alpha: stats[0].alpha,
+          period: {
+            start: internshipData[0].tanggal_mulai,
+            end: internshipData[0].tanggal_selesai,
+          },
+        },
+      });
+    } catch (error) {
+      console.error("Get attendance stats error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil statistik kehadiran",
+      });
+    }
+  },
+
   getAbsensi: async (req, res) => {
     try {
       const mahasiswaId = req.params.id || req.user.mahasiswa_id;

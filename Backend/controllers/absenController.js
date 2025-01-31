@@ -1,6 +1,9 @@
 const db = require("../config/database");
 const geolib = require("geolib");
 const qrcodeUtil = require("../utils/qrcode");
+const PDFDocument = require('pdfkit');
+const path = require('path');
+const fs = require('fs');
 
 const absenController = {
   // Scan QR Code untuk absensi
@@ -675,84 +678,386 @@ const absenController = {
   },
 
   // Export data absensi
-  exportAbsensi: async (req, res) => {
+  exportAbsensiAdmin : async (req, res) => {
+    const connection = await db.getConnection();
+    
     try {
-      const { startDate, endDate, mahasiswaId, status } = req.query;
+      const { selectedIds } = req.body;
       const adminId = req.user.id;
-
-      let query = `
-        SELECT
+  
+      // Validasi input
+      if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pilih setidaknya satu data absensi untuk diekspor'
+        });
+      }
+  
+      // Validasi akses admin ke data
+      const placeholders = selectedIds.map(() => '?').join(',');
+      const query = `
+        SELECT 
           m.nim,
           m.nama,
-          m.institusi,
-          DATE_FORMAT(a.tanggal, '%Y-%m-%d') as tanggal,
-          TIME_FORMAT(a.waktu_masuk, '%H:%i:%s') as waktu_masuk,
-          TIME_FORMAT(a.waktu_keluar, '%H:%i:%s') as waktu_keluar,
-          TIME_FORMAT(TIMEDIFF(a.waktu_keluar, a.waktu_masuk), '%H:%i:%s') as durasi,
-          a.status_masuk,
-          a.status_kehadiran,
-          a.dalam_radius,
-          a.device_info,
-          a.latitude_scan,
-          a.longitude_scan
+          DATE_FORMAT(a.tanggal, '%d/%m/%Y') as tanggal,
+          TIME_FORMAT(a.waktu_masuk, '%H:%i') as waktu_masuk,
+          TIME_FORMAT(a.waktu_keluar, '%H:%i') as waktu_keluar,
+          a.dalam_radius
         FROM absensi a
         JOIN mahasiswa m ON a.mahasiswa_id = m.id
-        WHERE m.admin_id = ?
+        WHERE a.id IN (${placeholders})
+        AND m.admin_id = ?
+        ORDER BY a.tanggal DESC, m.nama ASC
       `;
-
-      const params = [adminId];
-
-      if (startDate && endDate) {
-        query += " AND DATE(a.tanggal) BETWEEN ? AND ?";
-        params.push(startDate, endDate);
+  
+      const [data] = await connection.execute(query, [...selectedIds, adminId]);
+  
+      if (data.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tidak ada data untuk diekspor'
+        });
       }
-
-      if (mahasiswaId) {
-        query += " AND m.id = ?";
-        params.push(mahasiswaId);
-      }
-
-      if (status) {
-        query += " AND a.status_kehadiran = ?";
-        params.push(status);
-      }
-
-      query += " ORDER BY a.tanggal DESC, m.nama ASC";
-
-      const [data] = await db.execute(query, params);
-
-      // Calculate summary statistics
-      const summary = {
-        total_records: data.length,
-        tepat_waktu: data.filter((r) => r.status_masuk === "tepat_waktu")
-          .length,
-        telat: data.filter((r) => r.status_masuk === "telat").length,
-        hadir: data.filter((r) => r.status_kehadiran === "hadir").length,
-        izin: data.filter((r) => r.status_kehadiran === "izin").length,
-        alpha: data.filter((r) => r.status_kehadiran === "alpha").length,
-        dalam_radius: data.filter((r) => r.dalam_radius).length,
-        luar_radius: data.filter((r) => !r.dalam_radius).length,
-      };
-
-      res.json({
-        success: true,
-        data: data,
-        summary: summary,
-        filter: {
-          startDate,
-          endDate,
-          mahasiswaId,
-          status,
-        },
+  
+      // Get admin name
+      const [adminData] = await db.execute(
+        'SELECT nama FROM admin WHERE id = ?',
+        [req.user.admin_id]
+      );
+      const adminName = adminData[0]?.nama || 'Admin';
+  
+      // Create PDF
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 50,
+        bufferPages: true
       });
+  
+      // Set response headers
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename=Absensi_Admin_${new Date().toISOString().split('T')[0]}.pdf`
+      );
+  
+      // Pipe the PDF to the response
+      doc.pipe(res);
+  
+      // Add content to PDF
+      doc
+        .font('Helvetica-Bold')
+        .fontSize(16)
+        .text('LAPORAN ABSENSI MAGANG', { align: 'center' })
+        .moveDown();
+  
+      // Add metadata
+      doc
+        .font('Helvetica')
+        .fontSize(10)
+        .text(`Tanggal Cetak: ${new Date().toLocaleDateString('id-ID')}`)
+        .text(`Dicetak oleh: ${adminName}`)
+        .text(`Total Data: ${data.length} record`)
+        .moveDown();
+  
+      // Create table header
+      const tableTop = doc.y;
+      const tableHeaders = ['No', 'NIM', 'Nama', 'Tanggal', 'Waktu Masuk', 'Waktu Keluar', 'Status', 'Lokasi'];
+      
+      // Draw table
+      let y = tableTop;
+  
+      // Draw headers
+      doc.font('Helvetica-Bold').fontSize(10);
+      tableHeaders.forEach((header, i) => {
+        doc.text(header, 50 + (i * 70), y);
+      });
+  
+      // Draw rows
+      y += 20;
+      doc.font('Helvetica').fontSize(9);
+      data.forEach((record, index) => {
+        doc.text((index + 1).toString(), 50, y);
+        doc.text(record.nim, 120, y);
+        doc.text(record.nama, 190, y);
+        doc.text(record.tanggal, 260, y);
+        doc.text(record.waktu_masuk || '-', 330, y);
+        doc.text(record.waktu_keluar || '-', 400, y);
+        doc.text(record.status_kehadiran, 470, y);
+        doc.text(record.lokasi, 540, y);
+        y += 20;
+  
+        if (y > 750) {
+          doc.addPage();
+          y = 50;
+        }
+      });
+  
+      // Finalize the PDF
+      doc.end();
+  
     } catch (error) {
-      console.error("Export absensi error:", error);
+      console.error('Export error:', error);
       res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat mengexport data absensi",
+        message: 'Gagal mengekspor data',
+        error: error.message
       });
     }
   },
+  
+  exportAbsensiMahasiswa: async (req, res) => {
+    try {
+      const { selectedIds } = req.body;
+      const mahasiswaId = req.user.mahasiswa_id;
+  
+      if (!selectedIds || !Array.isArray(selectedIds) || selectedIds.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Pilih setidaknya satu data absensi untuk diekspor'
+        });
+      }
+  
+      const placeholders = selectedIds.map(() => '?').join(',');
+      let query = `
+        SELECT
+          DATE_FORMAT(a.tanggal, '%d/%m/%Y') as tanggal,
+          a.status_kehadiran,
+          TIME_FORMAT(a.waktu_masuk, '%H:%i') as waktu_masuk,
+          TIME_FORMAT(a.waktu_keluar, '%H:%i') as waktu_keluar,
+          a.status_masuk as ketepatan_waktu,
+          CASE
+            WHEN a.dalam_radius = 1 THEN 'Dalam Radius'
+            ELSE 'Luar Radius'
+          END as lokasi
+        FROM absensi a
+        WHERE a.mahasiswa_id = ? AND a.id IN (${placeholders})
+        ORDER BY a.tanggal DESC
+      `;
+  
+      const [data] = await db.execute(query, [mahasiswaId, ...selectedIds]);
+  
+      if (data.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Tidak ada data untuk diekspor'
+        });
+      }
+  
+      // Get mahasiswa info
+      const [mahasiswaData] = await db.execute(
+        'SELECT nama, nim FROM mahasiswa WHERE id = ?',
+        [mahasiswaId]
+      );
+      const mahasiswaNama = mahasiswaData[0]?.nama || 'Mahasiswa';
+      const mahasiswaNim = mahasiswaData[0]?.nim || '-';
+  
+      // Create PDF
+      const doc = new PDFDocument({
+        size: 'A4',
+        margin: 60,
+        bufferPages: true
+      });
+  
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=Absensi_${mahasiswaNim}_${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.pipe(res);
+  
+      // Header
+      const createHeader = () => {
+        const logoPath = path.join(__dirname, '../uploads/assets');
+        const semenPadangLogo = path.join(logoPath, 'semen-padang-logo.png');
+        const sigLogo = path.join(logoPath, 'sig-logo.png');
+  
+        if (fs.existsSync(semenPadangLogo)) {
+          doc.image(semenPadangLogo, 60, 40, { width: 60 });
+        }
+  
+        if (fs.existsSync(sigLogo)) {
+          doc.image(sigLogo, 495, 40, { width: 60 });
+        }
+  
+        doc.font('Helvetica-Bold')
+           .fontSize(16)
+           .text('SISTEM MONITORING MAGANG', 160, 50, { align: 'center', width: 300 })
+           .fontSize(14)
+           .text('Laporan Absensi Magang', 160, 75, { align: 'center', width: 300 });
+  
+        doc.moveTo(60, 110)
+           .lineTo(535, 110)
+           .lineWidth(0.5)
+           .strokeColor('#e0e0e0')
+           .stroke();
+      };
+  
+      createHeader();
+  
+      // Metadata
+      const currentDate = new Date().toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      });
+  
+      doc.font('Helvetica')
+         .fontSize(10)
+         .fillColor('#444444')
+         .moveDown(2.5)
+         .text(`Nama: ${mahasiswaNama}`, 60)
+         .moveDown(0.5)
+         .text(`NIM: ${mahasiswaNim}`, 60)
+         .moveDown(0.5)
+         .text(`Tanggal Cetak: ${currentDate}`, 60)
+         .moveDown(0.5)
+         .text(`Total Data: ${data.length} record`, 60)
+         .moveDown(1);
+  
+      // Table headers
+      const startX = 60;
+      let yPos = doc.y;
+  
+      const tableHeaders = ['No', 'Tanggal', 'Status', 'Waktu Masuk', 'Waktu Keluar', 'Ketepatan Waktu', 'Lokasi'];
+      const colWidths = [40, 70, 70, 70, 70, 90, 90];
+  
+      // Header styling
+      doc.fillColor('#f8f9fa')
+         .roundedRect(startX, yPos, 500, 30, 5)
+         .fill();
+  
+      doc.fillColor('#444444')
+         .font('Helvetica-Bold')
+         .fontSize(10);
+  
+      tableHeaders.forEach((header, i) => {
+        doc.text(header, 
+          startX + (i === 0 ? 0 : colWidths.slice(0, i).reduce((a, b) => a + b, 0)),
+          yPos + 10,
+          { width: colWidths[i], align: 'center' }
+        );
+      });
+  
+      // Data rows
+      yPos += 40;
+      doc.font('Helvetica').fontSize(9);
+  
+      data.forEach((record, index) => {
+        if (yPos > 700) {
+          doc.addPage();
+          createHeader();
+          yPos = 150;
+        }
+  
+        // Alternate row backgrounds
+        if (index % 2 === 0) {
+          doc.fillColor('#fafafa')
+             .roundedRect(startX, yPos, 500, 30, 2)
+             .fill();
+        }
+  
+        doc.fillColor('#444444');
+        let xPos = startX;
+  
+        const ketepatanWaktu = record.ketepatan_waktu === 'tepat_waktu' ? 'Tepat Waktu' : 'Telat';
+  
+        // Format status text to be more readable
+        const formattedStatus = record.status_kehadiran.charAt(0).toUpperCase() + record.status_kehadiran.slice(1);
+  
+        [
+          index + 1,
+          record.tanggal,
+          formattedStatus,
+          record.waktu_masuk || '-',
+          record.waktu_keluar || '-',
+          ketepatanWaktu,
+          record.lokasi
+        ].forEach((text, i) => {
+          const alignment = i === 0 ? 'center' : 'left';
+  
+          // Special styling for status
+          if (i === 2) {
+            let statusBgColor, statusTextColor;
+            switch(record.status_kehadiran) {
+              case 'hadir':
+                statusBgColor = '#e8f5e9';
+                statusTextColor = '#1a8754';
+                break;
+              case 'izin':
+                statusBgColor = '#fff3e0';
+                statusTextColor = '#fd7e14';
+                break;
+              case 'alpha':
+                statusBgColor = '#fee2e2';
+                statusTextColor = '#dc3545';
+                break;
+              default:
+                statusBgColor = '#f3f4f6';
+                statusTextColor = '#444444';
+            }
+  
+            // Draw status pill background
+            doc.fillColor(statusBgColor)
+               .roundedRect(xPos + 5, yPos + 5, colWidths[i] - 10, 20, 10)
+               .fill();
+  
+            // Draw status text
+            doc.fillColor(statusTextColor)
+               .text(text, xPos, yPos + 8, {
+                 width: colWidths[i],
+                 align: 'center'
+               });
+          } else {
+            doc.fillColor('#444444')
+               .text(String(text), xPos, yPos + 10, {
+                 width: colWidths[i],
+                 align: alignment
+               });
+          }
+  
+          xPos += colWidths[i];
+        });
+  
+        yPos += 30;
+      });
+  
+      // Footer
+      const createFooter = (pageNumber) => {
+        const totalPages = doc.bufferedPageRange().count;
+        doc.switchToPage(pageNumber);
+  
+        doc.moveTo(60, doc.page.height - 50)
+           .lineTo(535, doc.page.height - 50)
+           .lineWidth(0.5)
+           .strokeColor('#e0e0e0')
+           .stroke();
+  
+        doc.fontSize(8)
+           .fillColor('#666666')
+           .text(
+             `PT Semen Padang - Sistem Monitoring Magang | Halaman ${pageNumber + 1} dari ${totalPages}`,
+             60,
+             doc.page.height - 35,
+             { align: 'center' }
+           );
+      };
+  
+      const range = doc.bufferedPageRange();
+      for (let i = range.start; i < range.start + range.count; i++) {
+        createFooter(i);
+      }
+  
+      doc.end();
+  
+    } catch (error) {
+      console.error('Export error:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: 'Gagal mengekspor data',
+          error: error.message
+        });
+      }
+    }
+  },
+
 
   // Get status absensi hari ini
   getStatusAbsensiHariIni: async (req, res) => {

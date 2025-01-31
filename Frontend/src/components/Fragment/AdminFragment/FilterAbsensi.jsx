@@ -1,6 +1,7 @@
+// Frontend/src/components/Fragment/AdminFragment/FilterAbsensi.jsx
+
 import React, { useState } from "react";
 import { Calendar } from "lucide-react";
-import SearchButton from "../../Elements/Button/SearchButton";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
@@ -8,11 +9,9 @@ function FilterAbsensi({ onFilterChange }) {
   const [filters, setFilters] = useState({
     tanggal: null,
     status: "Semua Status",
-    mahasiswa_id: "all",
     search: "",
   });
 
-  // Status options for attendance
   const statusOptions = [
     "Semua Status",
     "hadir",
@@ -20,7 +19,6 @@ function FilterAbsensi({ onFilterChange }) {
     "alpha"
   ];
 
-  // Handle filter changes
   const handleFilterChange = (name, value) => {
     const newFilters = { ...filters, [name]: value };
     setFilters(newFilters);
@@ -33,20 +31,15 @@ function FilterAbsensi({ onFilterChange }) {
         {/* Date Filter */}
         <div>
           <label className="block text-gray-600 mb-2">Tanggal</label>
-          <div className="flex">
+          <div className="relative">
             <DatePicker
               selected={filters.tanggal}
               onChange={(date) => handleFilterChange("tanggal", date)}
               placeholderText="Pilih tanggal"
-              className="w-full border rounded-l-md p-2 pr-48"
+              className="w-full border rounded-lg p-2"
               dateFormat="dd/MM/yyyy"
             />
-            <button
-              className="bg-gray-100 px-3 border-y border-r rounded-r-md"
-              onClick={() => document.querySelector(".react-datepicker__input-container input").focus()}
-            >
-              <Calendar size={20} className="text-gray-500" />
-            </button>
+            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
           </div>
         </div>
 
@@ -54,13 +47,13 @@ function FilterAbsensi({ onFilterChange }) {
         <div>
           <label className="block text-gray-600 mb-2">Status Kehadiran</label>
           <select
-            className="w-full border rounded-md p-2"
+            className="w-full border rounded-lg p-2"
             value={filters.status}
             onChange={(e) => handleFilterChange("status", e.target.value)}
           >
             {statusOptions.map((status) => (
               <option key={status} value={status}>
-                {status}
+                {status.charAt(0).toUpperCase() + status.slice(1)}
               </option>
             ))}
           </select>
@@ -69,18 +62,13 @@ function FilterAbsensi({ onFilterChange }) {
         {/* Search Filter */}
         <div>
           <label className="block text-gray-600 mb-2">Pencarian</label>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Cari nama atau NIM"
-              className="flex-1 p-2 border rounded-lg"
-              value={filters.search}
-              onChange={(e) => handleFilterChange("search", e.target.value)}
-            />
-            <SearchButton onClick={() => onFilterChange(filters)}>
-              Cari
-            </SearchButton>
-          </div>
+          <input
+            type="text"
+            placeholder="Cari nama atau NIM"
+            className="w-full border rounded-lg p-2"
+            value={filters.search}
+            onChange={(e) => handleFilterChange("search", e.target.value)}
+          />
         </div>
       </div>
     </div>

@@ -14,29 +14,28 @@ router.post('/scan',
 // Middleware untuk memverifikasi token untuk semua routes
 router.use(auth.verifyToken);
 
-router.get('/dashboard/stats', auth.isAdmin, absenController.getDashboardStatisticsPerDay);
+// Export routes - pastikan ini ada sebelum middleware admin
+router.post('/export-admin', auth.isAdmin, absenController.exportAbsensiAdmin);
+router.post('/export-mahasiswa', auth.isMahasiswa, absenController.exportAbsensiMahasiswa);
 
+// Dashboard routes
+router.get('/dashboard/stats', auth.isAdmin, absenController.getDashboardStatisticsPerDay);
 router.get('/dashboard', auth.isAdmin, absenController.getDashboardStats);
 
-// Route untuk riwayat absensi
+// Riwayat absensi routes
 router.get('/riwayat', absenController.getRiwayatAbsensi);
-
 router.get('/absensi', absenController.getAbsensi);
-
-// Route untuk riwayat absensi specific mahasiswa
 router.get('/riwayat/:id', absenController.getRiwayatAbsensi);
 
-
-// Route untuk statistik absensi
+// Statistik routes
 router.get('/statistics', absenController.getAbsensiStatistics);
 
-// Routes untuk izin
+// Izin routes
 router.post('/izin',
   auth.isMahasiswa,
   validation.validateIzin,
   absenController.submitIzin
 );
-
 router.get('/izin/riwayat/:id?', absenController.getRiwayatIzin);
 
 // Admin only routes
@@ -45,11 +44,6 @@ router.use(auth.isAdmin);
 router.put('/izin/:izinId/status',
   auth.isResourceOwner,
   absenController.updateStatusIzin
-);
-
-router.get('/export',
-  validation.validateDateRange,
-  absenController.exportAbsensi
 );
 
 module.exports = router;

@@ -1,5 +1,9 @@
+// Frontend/src/components/Fragment/UserFragment/RiwayatAbsensi.jsx
+
 import React, { useState, useEffect } from "react";
 import axios from "axios";
+import { useAuth } from "../../Context/UserContext";
+import { Download, Loader2, AlertCircle } from "lucide-react";
 
 function RiwayatAbsensi() {
   const [attendanceData, setAttendanceData] = useState([]);
@@ -7,13 +11,16 @@ function RiwayatAbsensi() {
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [exportLoading, setExportLoading] = useState(false);
+
+  const { user } = useAuth();
   const itemsPerPage = 10;
 
   const fetchAttendanceData = async (page = currentPage) => {
     try {
       setLoading(true);
       setError(null);
-      
       const response = await axios.get(
         "http://localhost:3000/api/absen/absensi",
         {
@@ -44,7 +51,7 @@ function RiwayatAbsensi() {
 
         setAttendanceData(formattedData);
         const total = response.data.total || formattedData.length;
-        setTotalPages(Math.max(1, Math.ceil(total / itemsPerPage)));
+        setTotalPages(Math.ceil(total / itemsPerPage));
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -56,39 +63,70 @@ function RiwayatAbsensi() {
     }
   };
 
+  const handleExport = async () => {
+    if (selectedIds.length === 0) {
+      alert("Pilih setidaknya satu data untuk diekspor");
+      return;
+    }
+
+    setExportLoading(true);
+    try {
+      const response = await axios.post(
+        "http://localhost:3000/api/absen/export-mahasiswa",
+        { selectedIds },
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          responseType: 'blob',
+        }
+      );
+
+      // Handle PDF response
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `Absensi_${user.nim || 'Mahasiswa'}_${new Date().toISOString().split('T')[0]}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Gagal mengekspor data: ' + (error.response?.data?.message || 'Terjadi kesalahan'));
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedIds(attendanceData.map(record => record.id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleSelectRow = (id) => {
+    setSelectedIds(prev => {
+      if (prev.includes(id)) {
+        return prev.filter(item => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
   useEffect(() => {
     fetchAttendanceData();
   }, [currentPage]);
 
-  const totalItems = attendanceData.length;
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
-
-  const renderPaginationButtons = () => {
-    if (totalPages <= 0) return null;
-
-    const buttons = [];
-    for (let i = 1; i <= totalPages; i++) {
-      buttons.push(
-        <button
-          key={i}
-          onClick={() => setCurrentPage(i)}
-          className={`px-4 py-2 border rounded ${
-            currentPage === i ? "bg-gray-50" : "hover:bg-gray-50"
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-    return buttons;
-  };
-
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="p-4 text-center">
-          <p>Loading data absensi...</p>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="w-8 h-8 animate-spin text-gray-500" />
         </div>
       </div>
     );
@@ -97,142 +135,162 @@ function RiwayatAbsensi() {
   if (error) {
     return (
       <div className="bg-white rounded-lg shadow p-6">
-        <div className="p-4 text-center text-red-500">
-          <p>Error: {error}</p>
-          <button
-            onClick={() => fetchAttendanceData()}
-            className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            Coba Lagi
-          </button>
+        <div className="flex justify-center items-center h-64 text-red-500">
+          <AlertCircle className="w-6 h-6 mr-2" />
+          <span>{error}</span>
         </div>
       </div>
     );
   }
 
+  // Calculate pagination values
+  const totalItems = attendanceData.length;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+
   return (
     <div className="bg-white rounded-lg shadow p-6">
-      <h2 className="text-xl font-semibold mb-6">Riwayat Absensi</h2>
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-xl font-semibold">Riwayat Absensi</h2>
+        <button
+          onClick={handleExport}
+          disabled={selectedIds.length === 0 || exportLoading}
+          className={`flex items-center px-4 py-2 rounded ${
+            selectedIds.length === 0
+              ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-500 text-white hover:bg-blue-600'
+          }`}
+        >
+          {exportLoading ? (
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4 mr-2" />
+          )}
+          Export PDF
+        </button>
+      </div>
+
       <div className="overflow-x-auto">
         {attendanceData.length === 0 ? (
           <div className="p-4 text-center text-gray-500">
             Tidak ada data absensi yang tersedia.
           </div>
         ) : (
-          <table className="min-w-full">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-4">Tanggal</th>
-                <th className="text-left py-4">Status</th>
-                {/* Only show these columns if there's at least one non-izin record */}
-                {attendanceData.some(record => record.status_kehadiran === "hadir") && (
-                  <>
-                    <th className="text-left py-4">Waktu Masuk</th>
-                    <th className="text-left py-4">Waktu Keluar</th>
-                    <th className="text-left py-4">Ketepatan Waktu</th>
-                    <th className="text-left py-4">Lokasi</th>
-                  </>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {attendanceData.map((record, index) => (
-                <tr key={record.id || index} className="border-b">
-                  <td className="py-4">{record.tanggal}</td>
-                  <td className="py-4">
-                    <span
-                      className={`px-3 py-1 rounded-full text-sm ${
-                        record.status_kehadiran === "hadir"
-                          ? "bg-green-100 text-green-800"
-                          : record.status_kehadiran === "izin"
-                          ? "bg-yellow-100 text-[#F59E0B]"
-                          : record.status_kehadiran === "alpha"
-                          ? "bg-red-100 text-red-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {record.status_kehadiran === "hadir" 
-                        ? "Hadir" 
-                        : record.status_kehadiran === "izin"
-                        ? "Izin"
-                        : record.status_kehadiran === "alpha"
-                        ? "Alpha"
-                        : record.status_kehadiran}
-                    </span>
-                  </td>
-                  {/* Only show these cells if the status is "hadir" */}
-                  {record.status_kehadiran === "hadir" && (
-                    <>
-                      <td className="py-4">{record.waktu_masuk}</td>
-                      <td className="py-4">{record.waktu_keluar}</td>
-                      <td className="py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            record.status_masuk === "tepat_waktu"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {record.status_masuk === "tepat_waktu" ? "Tepat Waktu" : "Telat"}
-                        </span>
-                      </td>
-                      <td className="py-4">
-                        <span
-                          className={`px-3 py-1 rounded-full text-sm ${
-                            record.dalam_radius
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {record.dalam_radius ? "Dalam Radius" : "Luar Radius"}
-                        </span>
-                      </td>
-                    </>
-                  )}
-                  {/* Add empty cells for "izin" status to maintain table structure */}
-                  {record.status_kehadiran === "izin" && attendanceData.some(r => r.status_kehadiran === "hadir") && (
-                    <>
-                      <td className="py-4">-</td>
-                      <td className="py-4">-</td>
-                      <td className="py-4">-</td>
-                      <td className="py-4">-</td>
-                    </>
-                  )}
+          <div>
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b">
+                  <th className="w-8 py-4 px-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.length === attendanceData.length}
+                      onChange={handleSelectAll}
+                      className="rounded border-gray-300"
+                    />
+                  </th>
+                  <th className="text-left py-4">Tanggal</th>
+                  <th className="text-left py-4">Status</th>
+                  <th className="text-left py-4">Waktu Masuk</th>
+                  <th className="text-left py-4">Waktu Keluar</th>
+                  <th className="text-left py-4">Ketepatan Waktu</th>
+                  <th className="text-left py-4">Lokasi</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {attendanceData.map((record) => (
+                  <tr key={record.id} className="border-b">
+                    <td className="py-4 px-4">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(record.id)}
+                        onChange={() => handleSelectRow(record.id)}
+                        className="rounded border-gray-300"
+                      />
+                    </td>
+                    <td className="py-4">{record.tanggal}</td>
+                    <td className="py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          record.status_kehadiran === "hadir"
+                            ? "bg-green-100 text-green-800"
+                            : record.status_kehadiran === "izin"
+                            ? "bg-yellow-100 text-[#F59E0B]"
+                            : record.status_kehadiran === "alpha"
+                            ? "bg-red-100 text-red-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {record.status_kehadiran}
+                      </span>
+                    </td>
+                    <td className="py-4">{record.waktu_masuk}</td>
+                    <td className="py-4">{record.waktu_keluar}</td>
+                    <td className="py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          record.status_masuk === "tepat_waktu"
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {record.status_masuk === "tepat_waktu" ? "Tepat Waktu" : "Telat"}
+                      </span>
+                    </td>
+                    <td className="py-4">
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm ${
+                          record.dalam_radius
+                            ? "bg-green-100 text-green-800"
+                            : "bg-red-100 text-red-800"
+                        }`}
+                      >
+                        {record.dalam_radius ? "Dalam Radius" : "Luar Radius"}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div className="mt-4 flex justify-between items-center">
+              <p className="text-sm text-gray-500">
+                Showing {startIndex + 1} to {endIndex} of {totalItems} entries
+              </p>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Previous
+                </button>
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`px-4 py-2 border rounded ${
+                      currentPage === i + 1
+                        ? "bg-blue-50 text-blue-600 border-blue-200"
+                        : "hover:bg-gray-50"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  onClick={() =>
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                  }
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
         )}
       </div>
-
-      {totalItems > 0 && (
-        <div className="mt-4 flex justify-between items-center">
-          <p className="text-sm text-gray-500">
-            Showing {startIndex + 1} to {endIndex} of {totalItems} entries
-          </p>
-          <div className="flex space-x-2">
-            <button
-              onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Previous
-            </button>
-
-            {renderPaginationButtons()}
-
-            <button
-              onClick={() =>
-                setCurrentPage((prev) => Math.min(prev + 1, totalPages))
-              }
-              disabled={currentPage === totalPages}
-              className="px-4 py-2 border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

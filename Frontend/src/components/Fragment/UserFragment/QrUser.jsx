@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Clock, MapPin } from "lucide-react";
+import axios from "axios"; // Pastikan axios sudah diimport
 
 function QrUser() {
   const [attendanceData, setAttendanceData] = useState(null);
@@ -12,24 +13,19 @@ function QrUser() {
       setLoading(true);
       setError(null);
       
+      const token = localStorage.getItem("token");
+      
       // Fetch attendance data
-      const attendanceResponse = await fetch(
-        "http://localhost:3000/api/absen/absensi?page=1&limit=1",
+      const attendanceResponse = await axios.get(
+        "http://localhost:3000/api/absen/absensi", 
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+          params: { page: 1, limit: 1 },
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      if (!attendanceResponse.ok) {
-        throw new Error("Failed to fetch attendance data");
-      }
-      
-      const attendanceResult = await attendanceResponse.json();
-
-      if (attendanceResult.success && attendanceResult.data[0]) {
-        const latestRecord = attendanceResult.data[0];
+      if (attendanceResponse.data.success && attendanceResponse.data.data[0]) {
+        const latestRecord = attendanceResponse.data.data[0];
         const formattedData = {
           id: latestRecord.id,
           tanggal: new Date(latestRecord.tanggal).toLocaleDateString("id-ID"),
@@ -46,35 +42,21 @@ function QrUser() {
         setAttendanceData(formattedData);
       }
 
-      // Fetch QR code data
-      const qrResponse = await fetch(
+      // Fetch QR code
+      const qrResponse = await axios.get(
         "http://localhost:3000/api/user/profileQr",
         {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-          },
+          headers: { Authorization: `Bearer ${token}` }
         }
       );
 
-      if (!qrResponse.ok) {
-        throw new Error("Failed to fetch QR code");
-      }
-      
-      const qrData = await qrResponse.json();
-      if (qrData.success && qrData.data.qr_code) {
-        // If QR code starts with 'data:image', it's a base64 image
-        if (qrData.data.qr_code.startsWith('data:image')) {
-          setQrCodeUrl(qrData.data.qr_code);
-        } else {
-          // Otherwise, it's a file path
-          setQrCodeUrl(`http://localhost:3000/${qrData.data.qr_code}`);
-        }
+      if (qrResponse.data.success && qrResponse.data.data.qr_code) {
+        setQrCodeUrl(qrResponse.data.data.qr_code);
       }
 
     } catch (err) {
       console.error("Error fetching data:", err);
-      setError(err.message || "Failed to load data");
-      setAttendanceData(null);
+      setError(err.response?.data?.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
@@ -116,8 +98,6 @@ function QrUser() {
     );
   }
 
-  const isTodayAttendance = attendanceData && isToday(attendanceData.tanggal);
-
   return (
     <div className="bg-white rounded-xl shadow p-4 md:p-8 mb-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -128,6 +108,10 @@ function QrUser() {
                 src={qrCodeUrl}
                 alt="QR Code" 
                 className="w-64 h-64 object-contain"
+                onError={(e) => {
+                  console.error("Error loading QR code");
+                  setQrCodeUrl(null);
+                }}
               />
               <p className="text-gray-600 mt-2">QR Code Anda</p>
             </div>
@@ -145,9 +129,7 @@ function QrUser() {
               <div>
                 <div className="text-gray-600">Jam Masuk</div>
                 <div className="font-medium">
-                  {isTodayAttendance && attendanceData.waktu_masuk
-                    ? attendanceData.waktu_masuk
-                    : "Belum Absen"}
+                  {attendanceData?.waktu_masuk || "Belum Absen"}
                 </div>
               </div>
             </div>
@@ -156,7 +138,7 @@ function QrUser() {
               <div>
                 <div className="text-gray-600">Status Lokasi</div>
                 <div className="font-medium">
-                  {isTodayAttendance ? (
+                  {attendanceData ? (
                     <span
                       className={`px-3 py-1 rounded-full text-sm ${
                         attendanceData.dalam_radius
@@ -179,9 +161,7 @@ function QrUser() {
               <div>
                 <div className="text-gray-600">Jam Keluar</div>
                 <div className="font-medium">
-                  {isTodayAttendance && attendanceData.waktu_keluar
-                    ? attendanceData.waktu_keluar
-                    : "Belum Absen"}
+                  {attendanceData?.waktu_keluar || "Belum Absen"}
                 </div>
               </div>
             </div>

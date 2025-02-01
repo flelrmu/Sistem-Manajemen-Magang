@@ -25,12 +25,30 @@ if (!fs.existsSync(uploadDir)){
 }
 
 // Middleware
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 app.use(cors());
-app.use(helmet());
 app.use(compression());
+app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(morgan('dev'));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.pdf')) {
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment'
+      });
+    } else if (filePath.endsWith('.png') || filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+      res.set({
+        'Content-Type': 'image/*',
+        'Cache-Control': 'public, max-age=31536000'
+      });
+    }
+  }
+}));
 
 // Serve static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -106,15 +124,3 @@ app.listen(PORT, () => {
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });
 
-// Serve static files dengan konfigurasi yang benar
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
-  setHeaders: (res, filePath) => {
-    // Set proper headers untuk file download
-    if (filePath.endsWith('.pdf')) {
-      res.set({
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': 'attachment'
-      });
-    }
-  }
-}));

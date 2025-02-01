@@ -70,6 +70,7 @@ const handleUploadError = (error, req, res, next) => {
 router.use(auth.verifyToken);
 
 router.get('/profileQr', userController.getMahasiswaProfile);
+router.get('/qrcode', userController.getQRCode);
 
 // Profile routes
 router.get('/profile', (req, res, next) => {
@@ -106,11 +107,6 @@ router.put('/password',
 // Update password
 router.put('/profile/password', auth.verifyToken, userController.updatePassword);
 
-// QR Code
-router.get('/qrcode', 
-  auth.isMahasiswa,
-  userController.getQRCode
-);
 
 // Dashboard
 router.get('/dashboard/summary', 

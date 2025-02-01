@@ -2,6 +2,7 @@ const db = require("../config/database");
 const bcrypt = require("bcryptjs");
 const path = require("path");
 const fs = require("fs");
+const responseUtil = require("../utils/response");
 
 const userController = {
   // Get profile mahasiswa
@@ -138,8 +139,9 @@ const userController = {
 
   getMahasiswaProfile: async (req, res) => {
     try {
-      const userId = req.user.id; // Get user ID from JWT token
+      const userId = req.user.id;
 
+      // Get mahasiswa data including QR code
       const [mahasiswa] = await db.execute(
         `SELECT m.nim, m.nama, m.qr_code
          FROM mahasiswa m
@@ -149,22 +151,43 @@ const userController = {
       );
 
       if (mahasiswa.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Mahasiswa tidak ditemukan",
-        });
+        return responseUtil.notFound(res, "Mahasiswa tidak ditemukan");
       }
 
-      res.json({
-        success: true,
-        data: mahasiswa[0],
-      });
+      // Construct full QR code URL if exists
+      const qrCodeData = mahasiswa[0].qr_code ? {
+        ...mahasiswa[0],
+        qr_code: `${req.protocol}://${req.get('host')}/uploads/${mahasiswa[0].qr_code}`
+      } : mahasiswa[0];
+
+      return responseUtil.success(res, qrCodeData);
     } catch (error) {
       console.error("Get mahasiswa profile error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Terjadi kesalahan saat mengambil data mahasiswa",
-      });
+      return responseUtil.error(res, "Terjadi kesalahan saat mengambil data mahasiswa");
+    }
+  },
+
+  getQRCode: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const [mahasiswa] = await db.execute(
+        `SELECT m.id, m.nim, m.nama, m.qr_code 
+         FROM mahasiswa m 
+         WHERE m.user_id = ?`,
+        [userId]
+      );
+
+      if (!mahasiswa.length || !mahasiswa[0].qr_code) {
+        return responseUtil.notFound(res, "QR Code tidak ditemukan");
+      }
+
+      const qrCodeUrl = `${req.protocol}://${req.get('host')}/uploads/${mahasiswa[0].qr_code}`;
+
+      return responseUtil.success(res, { qr_code: qrCodeUrl });
+    } catch (error) {
+      console.error("Get QR Code error:", error);
+      return responseUtil.error(res, "Terjadi kesalahan saat mengambil QR Code");
     }
   },
 
@@ -399,40 +422,6 @@ const userController = {
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat update password",
-      });
-    }
-  },
-
-  // Get QR Code
-  getQRCode: async (req, res) => {
-    try {
-      const userId = req.user.id;
-
-      const [mahasiswa] = await db.execute(
-        "SELECT qr_code FROM mahasiswa WHERE user_id = ?",
-        [userId]
-      );
-
-      if (mahasiswa.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "QR Code tidak ditemukan",
-        });
-      }
-
-      const qrCodeUrl = `${mahasiswa[0].qr_code}`;
-
-      res.json({
-        success: true,
-        data: {
-          qr_code: qrCodeUrl,
-        },
-      });
-    } catch (error) {
-      console.error("Get QR Code error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Terjadi kesalahan saat mengambil QR Code",
       });
     }
   },

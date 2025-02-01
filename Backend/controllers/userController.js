@@ -9,18 +9,26 @@ const userController = {
   getProfile: async (req, res) => {
     try {
       const userId = req.user.id;
+      const userRole = req.user.role;
 
-      // Get user data with role check - removed non-existent columns
-      const [user] = await db.execute(
-        `SELECT u.email, u.photo_profile, u.role, 
-              m.id, m.nim, m.nama, m.institusi, m.jenis_kelamin, 
-              m.alamat, m.no_telepon, m.tanggal_mulai, m.tanggal_selesai,
-              m.status, m.sisa_hari
-       FROM users u
-       LEFT JOIN mahasiswa m ON u.id = m.user_id
-       WHERE u.id = ?`,
-        [userId]
-      );
+      let query;
+      if (userRole === "mahasiswa") {
+        query = `SELECT u.email, u.photo_profile, u.role, 
+                m.id, m.nim, m.nama, m.institusi, m.jenis_kelamin, 
+                m.alamat, m.no_telepon, m.tanggal_mulai, m.tanggal_selesai,
+                m.status, m.sisa_hari
+         FROM users u
+         LEFT JOIN mahasiswa m ON u.id = m.user_id
+         WHERE u.id = ?`;
+      } else if (userRole === "admin") {
+        query = `SELECT u.email, u.photo_profile, u.role,
+                a.id, a.nama, a.validation_code, a.paraf_image
+         FROM users u
+         LEFT JOIN admin a ON u.id = a.user_id
+         WHERE u.id = ?`;
+      }
+
+      const [user] = await db.execute(query, [userId]);
 
       if (user.length === 0) {
         return res.status(404).json({
@@ -29,58 +37,6 @@ const userController = {
         });
       }
 
-      if (user[0].role !== "mahasiswa") {
-        return res.status(403).json({
-          success: false,
-          message: "Akses ditolak. Hanya mahasiswa yang diizinkan.",
-        });
-      }
-
-      // Get statistik kehadiran
-      const [statistik] = await db.execute(
-        `SELECT
-         COUNT(*) as total_kehadiran,
-         COUNT(CASE WHEN status_masuk = 'tepat_waktu' THEN 1 END) as tepat_waktu,
-         COUNT(CASE WHEN status_masuk = 'telat' THEN 1 END) as telat,
-         COUNT(CASE WHEN status_kehadiran = 'izin' THEN 1 END) as izin
-       FROM absensi
-       WHERE mahasiswa_id = ?`,
-        [user[0].id]
-      );
-
-      // Get logbook stats
-      const [logbook] = await db.execute(
-        `SELECT
-         COUNT(*) as total_entries,
-         COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
-         COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved
-       FROM logbook
-       WHERE mahasiswa_id = ?`,
-        [user[0].id]
-      );
-
-      // Get laporan progress
-      const [laporan] = await db.execute(
-        `SELECT MAX(progress) as progress_laporan
-       FROM laporan
-       WHERE mahasiswa_id = ?`,
-        [user[0].id]
-      );
-
-      // Calculate remaining days
-      const today = new Date();
-      const endDate = new Date(user[0].tanggal_selesai);
-      const remainingDays = Math.max(
-        0,
-        Math.ceil((endDate - today) / (1000 * 60 * 60 * 24))
-      );
-
-      // Update sisa_hari in database
-      await db.execute("UPDATE mahasiswa SET sisa_hari = ? WHERE id = ?", [
-        remainingDays,
-        user[0].id,
-      ]);
-
       // Add full URL for photo_profile
       if (user[0].photo_profile) {
         user[0].photo_profile = `${req.protocol}://${req.get(
@@ -88,16 +44,44 @@ const userController = {
         )}/uploads/profiles/${user[0].photo_profile}`;
       }
 
-      user[0].sisa_hari = remainingDays;
+      // For mahasiswa, include additional statistics
+      if (userRole === "mahasiswa") {
+        const [statistik] = await db.execute(
+          `SELECT
+           COUNT(*) as total_kehadiran,
+           COUNT(CASE WHEN status_masuk = 'tepat_waktu' THEN 1 END) as tepat_waktu,
+           COUNT(CASE WHEN status_masuk = 'telat' THEN 1 END) as telat,
+           COUNT(CASE WHEN status_kehadiran = 'izin' THEN 1 END) as izin
+           FROM absensi
+           WHERE mahasiswa_id = ?`,
+          [user[0].id]
+        );
 
-      res.json({
+        const [logbook] = await db.execute(
+          `SELECT
+           COUNT(*) as total_entries,
+           COUNT(CASE WHEN status = 'pending' THEN 1 END) as pending,
+           COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved
+           FROM logbook
+           WHERE mahasiswa_id = ?`,
+          [user[0].id]
+        );
+
+        return res.json({
+          success: true,
+          data: {
+            profile: user[0],
+            statistik: statistik[0],
+            logbook: logbook[0],
+          },
+        });
+      }
+
+      // For admin, return just the profile
+      return res.json({
         success: true,
         data: {
           profile: user[0],
-          statistik: statistik[0],
-          logbook: logbook[0],
-          laporan: laporan[0],
-          period: `${user[0].tanggal_mulai} - ${user[0].tanggal_selesai}`,
         },
       });
     } catch (error) {

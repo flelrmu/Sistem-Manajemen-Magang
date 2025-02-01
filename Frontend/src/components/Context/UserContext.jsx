@@ -39,40 +39,97 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-    
-    if (token && savedUser) {
-      const userData = JSON.parse(savedUser);
-      setUser(userData);
-      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-      refreshProfile(); // Refresh profile data on initial load
+  const updateProfile = async (formData) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token not found");
+
+      const userStr = localStorage.getItem("user");
+      const currentUser = userStr ? JSON.parse(userStr) : null;
+      const role = currentUser?.role;
+
+      const endpoint = role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
+      
+      const response = await axios.put(`${API_URL}${endpoint}`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        // Preserve the role in the updated user data
+        const updatedUser = {
+          ...response.data.data,
+          role: currentUser.role
+        };
+
+        if (updatedUser.photo_profile && !updatedUser.photo_profile.startsWith('http')) {
+          updatedUser.photo_profile = `${API_URL}/uploads/profiles/${updatedUser.photo_profile}`;
+        }
+
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        setUser(updatedUser);
+        return response.data;
+      }
+      
+      throw new Error(response.data.message || "Update failed");
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      throw error.response?.data || { message: "Update profile error" };
     }
-    setLoading(false);
-  }, []);
+  };
+
+  const updatePassword = async (passwordData) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token not found");
+
+      const role = user?.role;
+      const endpoint = role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
+      
+      const response = await axios.put(`${API_URL}${endpoint}`, passwordData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: "Update password error" };
+    }
+  };
 
   const login = async (email, password) => {
     try {
-      const response = await axios.post(
-        `${API_URL}/api/auth/login`,
-        { email, password }
-      );
+      const response = await axios.post(`${API_URL}/api/auth/login`, {
+        email,
+        password
+      });
+
       if (response.data.success) {
-        const { token, user } = response.data;
-        const userData = {
-          ...user,
-          photo_profile: user.photo_profile ? 
-            `${API_URL}/uploads/profiles/${user.photo_profile}` : null
+        const { token, user: userData } = response.data;
+        
+        // Process photo_profile URL if it exists
+        const processedUser = {
+          ...userData,
+          photo_profile: userData.photo_profile ? 
+            `${API_URL}/uploads/profiles/${userData.photo_profile}` : null
         };
         
         localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(userData));
-        setUser(userData);
+        localStorage.setItem("user", JSON.stringify(processedUser));
+        
+        // Set default authorization header
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+        
+        setUser(processedUser);
         return response.data;
       }
+      
+      throw new Error(response.data.message || "Login failed");
     } catch (error) {
+      console.error('Login error:', error);
       throw error.response?.data || { message: "Login error" };
     }
   };
@@ -84,34 +141,52 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  const updateProfile = async (formData) => {
-    try {
-      const endpoint = user.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
-      const response = await axios.put(`${API_URL}${endpoint}`, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
+  // Initialize auth state
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem("token");
+        const savedUser = localStorage.getItem("user");
+
+        if (token && savedUser) {
+          // Set axios default header
+          axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          
+          // Parse and set initial user state
+          const parsedUser = JSON.parse(savedUser);
+          setUser(parsedUser);
+
+          // Refresh profile in background
+          await refreshProfile();
         }
-      });
-
-      if (response.data.success) {
-        await refreshProfile(); // Refresh the entire profile after update
-        return response.data;
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        logout(); // Clear invalid auth state
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      throw error.response?.data || { message: "Update profile error" };
-    }
-  };
+    };
 
-  const updatePassword = async (passwordData) => {
-    try {
-      const endpoint = user.role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
-      const response = await axios.put(`${API_URL}${endpoint}`, passwordData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: "Update password error" };
-    }
-  };
+    initializeAuth();
+  }, []);
+
+  // Set up axios response interceptor for 401 errors
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response?.status === 401) {
+          logout();
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axios.interceptors.response.eject(interceptor);
+    };
+  }, []);
 
   const value = {
     user,

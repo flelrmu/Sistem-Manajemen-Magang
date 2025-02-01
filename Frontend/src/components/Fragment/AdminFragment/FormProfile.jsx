@@ -11,14 +11,24 @@ const FormProfile = () => {
     nama: user?.nama || "",
     email: user?.email || "",
     photo: null,
-    photoPreview: user?.photo_profile
-      ? `http://localhost:3000/uploads/profiles/${user.photo_profile}`
-      : null,
+    photoPreview: user?.photo_profile || null
   });
 
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: "error", text: "File terlalu besar. Maksimal 5MB" });
+        return;
+      }
+      
+      // Validate file type
+      if (!['image/jpeg', 'image/png', 'image/jpg'].includes(file.type)) {
+        setMessage({ type: "error", text: "Tipe file tidak diizinkan. Gunakan JPG, JPEG, atau PNG" });
+        return;
+      }
+
       setProfileData((prev) => ({
         ...prev,
         photo: file,
@@ -34,26 +44,34 @@ const FormProfile = () => {
 
     try {
       const formData = new FormData();
-      if (profileData.nama !== user.nama)
+      if (profileData.nama !== user.nama) {
         formData.append("nama", profileData.nama);
-      if (profileData.email !== user.email)
+      }
+      if (profileData.email !== user.email) {
         formData.append("email", profileData.email);
-      if (profileData.photo)
+      }
+      if (profileData.photo) {
         formData.append("photo_profile", profileData.photo);
+      }
 
       const response = await updateProfile(formData);
-      setMessage({ type: "success", text: response.message });
+      if (response.success) {
+        setMessage({ type: "success", text: response.message });
+      } else {
+        throw new Error(response.message || "Update profile gagal");
+      }
     } catch (error) {
       setMessage({
         type: "error",
-        text: error.message || "Terjadi kesalahan saat update profile",
+        text: error.message || "Terjadi kesalahan saat update profile"
       });
     } finally {
       setLoading(false);
     }
   };
+
   return (
-    <div className=" bg-white p-6 rounded-lg shadow mt-8 max-w-3xl">
+    <div className="bg-white p-6 rounded-lg shadow mt-8 max-w-3xl">
       <h2 className="text-xl font-semibold mb-6">Informasi Pribadi</h2>
       {message.text && (
         <div
@@ -87,7 +105,7 @@ const FormProfile = () => {
             <input
               type="file"
               className="hidden"
-              accept="image/*"
+              accept="image/jpeg,image/png,image/jpg"
               onChange={handlePhotoChange}
             />
           </label>
@@ -103,6 +121,7 @@ const FormProfile = () => {
                 setProfileData({ ...profileData, nama: e.target.value })
               }
               className="w-full p-2 border rounded-lg"
+              required
             />
           </div>
 
@@ -115,6 +134,7 @@ const FormProfile = () => {
                 setProfileData({ ...profileData, email: e.target.value })
               }
               className="w-full p-2 border rounded-lg"
+              required
             />
           </div>
 

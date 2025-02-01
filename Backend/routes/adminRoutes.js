@@ -7,20 +7,25 @@ const adminController = require('../controllers/adminController');
 const auth = require('../middleware/auth');
 const validation = require('../middleware/validation');
 const fs = require('fs');
+const userController = require('../controllers/userController');
+
+const uploadDir = path.join(__dirname, '..', 'uploads', 'profiles');
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Configure multer storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/profiles/');
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    cb(null, 'profile-' + uniqueSuffix + path.extname(file.originalname));
   }
 });
 
-// Configure multer upload
-const upload = multer({ 
+const upload = multer({
   storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -28,13 +33,33 @@ const upload = multer({
   fileFilter: function(req, file, cb) {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.mimetype)) {
-      const error = new Error('Wrong file type');
-      error.code = 'WRONG_FILE_TYPE';
-      return cb(error, false);
+      return cb(new Error('Invalid file type. Only JPG, JPEG, and PNG are allowed.'), false);
     }
     cb(null, true);
   }
 });
+
+const handleMulterError = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(400).json({
+        success: false,
+        message: 'File terlalu besar. Maksimal 5MB'
+      });
+    }
+    return res.status(400).json({
+      success: false,
+      message: 'Error saat upload file'
+    });
+  }
+  if (err) {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
+  next();
+};
 
 // Public route for getting admin users list (used in registration)
 router.get('/users', adminController.getAdminUsers);
@@ -69,32 +94,19 @@ router.get('/institutions', adminController.getInstitutions);
 
 
 // Profile management
+// Profile routes
 router.put('/profile',
+  auth.verifyToken,
+  auth.isAdmin,
   upload.single('photo_profile'),
-  (error, req, res, next) => {
-    if (error) {
-      if (error.code === 'LIMIT_FILE_SIZE') {
-        return res.status(400).json({
-          success: false,
-          message: 'File terlalu besar. Maksimal 5MB'
-        });
-      }
-      if (error.code === 'WRONG_FILE_TYPE') {
-        return res.status(400).json({
-          success: false,
-          message: 'Tipe file tidak diizinkan. Gunakan JPG, JPEG, atau PNG'
-        });
-      }
-      return res.status(500).json({
-        success: false,
-        message: 'Error saat upload file'
-      });
-    }
-    next();
-  },
-  validation.validateUpdateProfile,
-  validation.handleValidationErrors,
+  handleMulterError,
   adminController.updateProfile
+);
+
+router.get('/profile',
+  auth.verifyToken,
+  auth.isAdmin,
+  adminController.getProfile
 );
 
 

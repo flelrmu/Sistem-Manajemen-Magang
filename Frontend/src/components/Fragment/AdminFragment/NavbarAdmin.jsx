@@ -5,11 +5,11 @@ import { UserCircle, LogOut, ChevronDown, AlignJustify } from "lucide-react";
 import { useAuth } from "../../Context/UserContext";
 
 const NavbarAdmin = ({ type }) => {
-  const { user, logout } = useAuth(); // Get user and logout function from context
+  const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [toggle, setToggle] = useState(false);
   const dropdownRef = useRef(null);
-  const navigate = useNavigate(); // Use navigate hook to programmatically navigate
+  const navigate = useNavigate();
 
   const handleToggle = () => {
     setToggle(!toggle);
@@ -17,11 +17,22 @@ const NavbarAdmin = ({ type }) => {
 
   const handleLogout = async () => {
     try {
-      await logout(); // Call logout from context
-      navigate("/login"); // Redirect to login page after logout
+      await logout();
+      navigate("/login");
     } catch (error) {
       console.error("Logout error:", error);
     }
+  };
+
+  // Helper function to get profile photo URL
+  const getProfilePhotoUrl = () => {
+    if (!user?.photo_profile) return null;
+    // Check if the photo_profile is already a full URL
+    if (user.photo_profile.startsWith('http')) {
+      return user.photo_profile;
+    }
+    // Otherwise, construct the URL
+    return `${process.env.REACT_APP_API_URL || 'http://localhost:3000'}/uploads/profiles/${user.photo_profile}`;
   };
 
   return (
@@ -57,11 +68,18 @@ const NavbarAdmin = ({ type }) => {
                       user?.role?.slice(1) || "Admin"}
                   </span>
                 </div>
-                {user?.photo_profile ? (
+                {getProfilePhotoUrl() ? (
                   <img
-                    src={`http://localhost:3000/uploads/profiles/${user.photo_profile}`}
+                    src={getProfilePhotoUrl()}
                     alt="Profile"
                     className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 object-cover"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = null;
+                      e.target.className = "hidden";
+                      e.target.nextSibling.className = 
+                        "h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 bg-gray-200 flex items-center justify-center";
+                    }}
                   />
                 ) : (
                   <div className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 bg-gray-200 flex items-center justify-center">
@@ -123,6 +141,8 @@ const NavbarAdmin = ({ type }) => {
               </div>
             </div>
           </div>
+          
+          {/* Mobile menu button */}
           <div className="md:hidden flex justify-between items-center w-full">
             <div className="bg-white shadow ml-auto px-[12px] py-[12px] rounded-md">
               <AlignJustify
@@ -131,6 +151,8 @@ const NavbarAdmin = ({ type }) => {
               />
             </div>
           </div>
+          
+          {/* Mobile menu */}
           <div
             className={`absolute shadow text-end justify-end items-end cursor-pointer mr-[32px] rounded-lg top-20 right-0 bg-white z-50 flex flex-col px-5 pb-5 transition-all duration-500 ease-in-out ${
               toggle

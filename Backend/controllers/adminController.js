@@ -2,6 +2,8 @@ const db = require("../config/database");
 const bcrypt = require("bcryptjs");
 const qrcodeUtil = require("../utils/qrcode");
 const { v4: uuidv4 } = require("uuid");
+const path = require("path"); // Add path module
+const fs = require("fs");
 
 const adminController = {
   // Get dashboard statistics
@@ -117,44 +119,153 @@ const adminController = {
     }
   },
 
+  // Get admin profile
+  getProfile: async (req, res) => {
+    try {
+      const adminId = req.user.id;
+
+      // Fetch profile data with join to admin table
+      const [rows] = await db.execute(
+        `SELECT u.id, u.email, u.photo_profile, a.nama, a.validation_code
+         FROM users u
+         LEFT JOIN admin a ON u.id = a.user_id
+         WHERE u.id = ? AND u.role = 'admin'`,
+        [adminId]
+      );
+
+      if (rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Profile tidak ditemukan",
+        });
+      }
+
+      // Process the photo_profile URL if it exists
+      const userData = rows[0];
+      if (userData.photo_profile) {
+        userData.photo_profile = `${req.protocol}://${req.get(
+          "host"
+        )}/uploads/profiles/${userData.photo_profile}`;
+      }
+
+      res.json({
+        success: true,
+        data: userData,
+      });
+    } catch (error) {
+      console.error("Get profile error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil data profile",
+      });
+    }
+  },
+
   // Update profile admin
   updateProfile: async (req, res) => {
-    const connection = await db.getConnection();
+    let connection;
     try {
+      connection = await db.getConnection();
       await connection.beginTransaction();
 
       const adminId = req.user.id;
       const { nama, email } = req.body;
       const photoProfile = req.file ? req.file.filename : null;
 
-      // Update user data if email provided
-      if (email) {
-        await connection.execute("UPDATE users SET email = ? WHERE id = ?", [
-          email,
-          adminId,
-        ]);
+      console.log("Update profile request:", {
+        adminId,
+        nama,
+        email,
+        photoProfile,
+      });
+
+      // Get current user data
+      const [currentUser] = await connection.execute(
+        `SELECT u.photo_profile, u.email, a.nama
+         FROM users u
+         LEFT JOIN admin a ON u.id = a.user_id
+         WHERE u.id = ?`,
+        [adminId]
+      );
+
+      if (!currentUser.length) {
+        await connection.rollback();
+        return res.status(404).json({
+          success: false,
+          message: "User tidak ditemukan",
+        });
       }
 
-      // Update photo if provided
+      // Update data based on what was provided
+      const updates = [];
+      const updateParams = [];
+
+      if (email && email !== currentUser[0].email) {
+        // Check if email is already in use
+        const [emailExists] = await connection.execute(
+          "SELECT id FROM users WHERE email = ? AND id != ?",
+          [email, adminId]
+        );
+
+        if (emailExists.length > 0) {
+          await connection.rollback();
+          return res.status(400).json({
+            success: false,
+            message: "Email sudah digunakan",
+          });
+        }
+
+        updates.push("users.email = ?");
+        updateParams.push(email);
+      }
+
       if (photoProfile) {
-        await connection.execute(
-          "UPDATE users SET photo_profile = ? WHERE id = ?",
-          [photoProfile, adminId]
-        );
+        updates.push("users.photo_profile = ?");
+        updateParams.push(photoProfile);
+
+        // Delete old photo if exists
+        if (currentUser[0].photo_profile) {
+          const oldPhotoPath = path.join(
+            __dirname,
+            "..",
+            "uploads",
+            "profiles",
+            currentUser[0].photo_profile
+          );
+          try {
+            if (fs.existsSync(oldPhotoPath)) {
+              fs.unlinkSync(oldPhotoPath);
+            }
+          } catch (error) {
+            console.error("Error deleting old photo:", error);
+            // Continue execution even if old photo deletion fails
+          }
+        }
       }
 
-      // Update admin name if provided
-      if (nama) {
-        await connection.execute(
-          "UPDATE admin SET nama = ? WHERE user_id = ?",
-          [nama, adminId]
-        );
+      if (nama && nama !== currentUser[0].nama) {
+        updates.push("admin.nama = ?");
+        updateParams.push(nama);
+      }
+
+      // Only proceed with update if there are changes
+      if (updates.length > 0) {
+        updateParams.push(adminId);
+
+        const updateQuery = `
+          UPDATE users
+          LEFT JOIN admin ON users.id = admin.user_id
+          SET ${updates.join(", ")}
+          WHERE users.id = ?
+        `;
+
+        await connection.execute(updateQuery, updateParams);
       }
 
       await connection.commit();
 
       // Fetch updated profile data
-      const [updatedAdmin] = await db.execute(
+      const [updatedUser] = await connection.execute(
         `SELECT u.email, u.photo_profile, a.nama
          FROM users u
          LEFT JOIN admin a ON u.id = a.user_id
@@ -162,27 +273,49 @@ const adminController = {
         [adminId]
       );
 
-      // Add full URL for photo_profile
-      if (updatedAdmin[0].photo_profile) {
-        updatedAdmin[0].photo_profile = `${req.protocol}://${req.get(
-          "host"
-        )}/uploads/profiles/${updatedAdmin[0].photo_profile}`;
-      }
+      // Construct response data
+      const responseData = {
+        ...updatedUser[0],
+        photo_profile: updatedUser[0].photo_profile
+          ? `${req.protocol}://${req.get("host")}/uploads/profiles/${
+              updatedUser[0].photo_profile
+            }`
+          : null,
+      };
 
       res.json({
         success: true,
         message: "Profile berhasil diupdate",
-        data: updatedAdmin[0],
+        data: responseData,
       });
     } catch (error) {
-      await connection.rollback();
       console.error("Update profile error:", error);
+      if (connection) await connection.rollback();
+
+      // Delete uploaded file if exists and there was an error
+      if (req.file) {
+        try {
+          const filePath = path.join(
+            __dirname,
+            "..",
+            "uploads",
+            "profiles",
+            req.file.filename
+          );
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (error) {
+          console.error("Error deleting uploaded file:", error);
+        }
+      }
+
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat update profile",
       });
     } finally {
-      connection.release();
+      if (connection) connection.release();
     }
   },
 

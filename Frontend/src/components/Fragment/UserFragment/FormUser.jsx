@@ -3,10 +3,12 @@ import { Camera } from "lucide-react";
 import { useAuth } from "../../Context/UserContext";
 import axios from "axios";
 
+const API_URL = "http://localhost:3000/api";
+
 function FormUser() {
-  const { user, updateProfile } = useAuth(); // Import updateProfile
+  const { user, updateProfile, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [message, setMessage] = useState({ type: "", text: "" });
 
   const [personalInfo, setPersonalInfo] = useState({
     namaLengkap: "",
@@ -16,13 +18,13 @@ function FormUser() {
     institusi: "",
     alamat: "",
     photo: null,
-    photoPreview: null
+    photoPreview: null,
   });
 
   const [passwordForm, setPasswordForm] = useState({
     passwordLama: "",
     passwordBaru: "",
-    konfirmasiPassword: ""
+    konfirmasiPassword: "",
   });
 
   useEffect(() => {
@@ -35,9 +37,7 @@ function FormUser() {
         institusi: user.institusi || "",
         alamat: user.alamat || "",
         photo: null,
-        photoPreview: user.photo_profile 
-          ? `http://localhost:3000/uploads/profiles/${user.photo_profile}` 
-          : null
+        photoPreview: user.photo_profile || null,
       });
     }
   }, [user]);
@@ -45,18 +45,21 @@ function FormUser() {
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        setMessage({ type: 'error', text: 'Ukuran file tidak boleh lebih dari 2MB' });
+      if (file.size > 2 * 1024 * 1024) {
+        setMessage({
+          type: "error",
+          text: "Ukuran file tidak boleh lebih dari 2MB",
+        });
         return;
       }
       if (!file.type.match(/^image\/(jpeg|png|jpg)$/)) {
-        setMessage({ type: 'error', text: 'Format file harus JPG atau PNG' });
+        setMessage({ type: "error", text: "Format file harus JPG atau PNG" });
         return;
       }
-      setPersonalInfo(prev => ({
+      setPersonalInfo((prev) => ({
         ...prev,
         photo: file,
-        photoPreview: URL.createObjectURL(file)
+        photoPreview: URL.createObjectURL(file),
       }));
     }
   };
@@ -81,18 +84,18 @@ function FormUser() {
         formData.append('photo_profile', personalInfo.photo);
       }
 
-      const response = await updateProfile(formData); // Use updateProfile from context
-
+      const response = await updateProfile(formData);
+      
       if (response.success) {
         setMessage({ type: 'success', text: response.message });
-        // Refresh halaman untuk memperbarui data
-        window.location.reload();
+        // Refresh the profile data
+        await refreshProfile();
       }
     } catch (error) {
       console.error('Error updating profile:', error);
       setMessage({ 
         type: 'error', 
-        text: error.message || 'Terjadi kesalahan saat update profile' 
+        text: error.response?.data?.message || 'Terjadi kesalahan saat update profile' 
       });
     } finally {
       setLoading(false);
@@ -102,34 +105,40 @@ function FormUser() {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     if (passwordForm.passwordBaru !== passwordForm.konfirmasiPassword) {
-      setMessage({ type: 'error', text: 'Konfirmasi password tidak sesuai' });
+      setMessage({ type: "error", text: "Konfirmasi password tidak sesuai" });
       return;
     }
     setLoading(true);
-    setMessage({ type: '', text: '' });
+    setMessage({ type: "", text: "" });
 
     try {
       const response = await axios.put(
-        'http://localhost:3000/api/user/profile/password',
+        `${API_URL}/user/profile/password`,
         {
           oldPassword: passwordForm.passwordLama,
-          newPassword: passwordForm.passwordBaru
+          newPassword: passwordForm.passwordBaru,
         },
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
         }
       );
 
       if (response.data.success) {
-        setMessage({ type: 'success', text: response.data.message });
-        setPasswordForm({ passwordLama: '', passwordBaru: '', konfirmasiPassword: '' });
+        setMessage({ type: "success", text: response.data.message });
+        setPasswordForm({
+          passwordLama: "",
+          passwordBaru: "",
+          konfirmasiPassword: "",
+        });
       }
     } catch (error) {
-      setMessage({ 
-        type: 'error', 
-        text: error.response?.data?.message || 'Terjadi kesalahan saat update password' 
+      setMessage({
+        type: "error",
+        text:
+          error.response?.data?.message ||
+          "Terjadi kesalahan saat update password",
       });
     } finally {
       setLoading(false);
@@ -140,16 +149,20 @@ function FormUser() {
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <div className="lg:col-span-2 space-y-6">
         {message.text && (
-          <div className={`p-4 rounded-lg ${
-            message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-          }`}>
+          <div
+            className={`p-4 rounded-lg ${
+              message.type === "success"
+                ? "bg-green-100 text-green-700"
+                : "bg-red-100 text-red-700"
+            }`}
+          >
             {message.text}
           </div>
         )}
 
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-xl font-semibold mb-6">Informasi Pribadi</h2>
-          
+
           <div className="flex justify-center mb-6">
             <div className="relative">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-200">
@@ -158,6 +171,7 @@ function FormUser() {
                     src={personalInfo.photoPreview}
                     alt="Profile"
                     className="w-full h-full object-cover"
+                    key={personalInfo.photoPreview} // Add key to force re-render
                   />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-gray-400">
@@ -210,7 +224,9 @@ function FormUser() {
                 <input
                   type="email"
                   value={personalInfo.email}
-                  onChange={(e) => setPersonalInfo({ ...personalInfo, email: e.target.value })}
+                  onChange={(e) =>
+                    setPersonalInfo({ ...personalInfo, email: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -222,7 +238,12 @@ function FormUser() {
                 <input
                   type="tel"
                   value={personalInfo.nomorTelepon}
-                  onChange={(e) => setPersonalInfo({ ...personalInfo, nomorTelepon: e.target.value })}
+                  onChange={(e) =>
+                    setPersonalInfo({
+                      ...personalInfo,
+                      nomorTelepon: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -246,7 +267,9 @@ function FormUser() {
                 <input
                   type="text"
                   value={personalInfo.alamat}
-                  onChange={(e) => setPersonalInfo({ ...personalInfo, alamat: e.target.value })}
+                  onChange={(e) =>
+                    setPersonalInfo({ ...personalInfo, alamat: e.target.value })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -258,7 +281,7 @@ function FormUser() {
                 disabled={loading}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? 'Menyimpan...' : 'Simpan Perubahan'}
+                {loading ? "Menyimpan..." : "Simpan Perubahan"}
               </button>
             </div>
           </form>
@@ -275,7 +298,12 @@ function FormUser() {
                 <input
                   type="password"
                   value={passwordForm.passwordLama}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, passwordLama: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      passwordLama: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -287,7 +315,12 @@ function FormUser() {
                 <input
                   type="password"
                   value={passwordForm.passwordBaru}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, passwordBaru: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      passwordBaru: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -299,7 +332,12 @@ function FormUser() {
                 <input
                   type="password"
                   value={passwordForm.konfirmasiPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, konfirmasiPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      konfirmasiPassword: e.target.value,
+                    })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-md"
                 />
               </div>
@@ -311,7 +349,7 @@ function FormUser() {
                 disabled={loading}
                 className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50"
               >
-                {loading ? 'Memperbarui...' : 'Update Password'}
+                {loading ? "Memperbarui..." : "Update Password"}
               </button>
             </div>
           </form>
@@ -325,20 +363,22 @@ function FormUser() {
             <div>
               <label className="block text-sm text-gray-600">Status</label>
               <p className="text-green-500 font-medium">
-                {user?.status || 'Aktif'}
+                {user?.status || "Aktif"}
               </p>
             </div>
-            
+
             <div>
-              <label className="block text-sm text-gray-600">Periode Magang</label>
+              <label className="block text-sm text-gray-600">
+                Periode Magang
+              </label>
               <p className="font-medium">
                 {user?.tanggal_mulai} - {user?.tanggal_selesai}
               </p>
             </div>
-            
+
             <div>
               <label className="block text-sm text-gray-600">Sisa Waktu</label>
-              <p className="font-medium">{user?.sisa_hari || '0'} Hari</p>
+              <p className="font-medium">{user?.sisa_hari || "0"} Hari</p>
             </div>
           </div>
         </div>

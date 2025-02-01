@@ -2,10 +2,42 @@ import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
 
 const UserContext = createContext(null);
+const API_URL = "http://localhost:3000";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const refreshProfile = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      const endpoint = user?.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
+      const response = await axios.get(`${API_URL}${endpoint}`, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const userData = response.data.data.profile;
+        // Fix photo_profile URL
+        if (userData.photo_profile) {
+          // Remove any potential double URL
+          const fileName = userData.photo_profile.split('/').pop();
+          userData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
+        }
+        
+        localStorage.setItem("user", JSON.stringify(userData));
+        setUser(userData);
+        return response.data;
+      }
+    } catch (error) {
+      console.error('Error refreshing profile:', error);
+      throw error.response?.data || { message: "Profile refresh error" };
+    }
+  };
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -15,6 +47,7 @@ export const AuthProvider = ({ children }) => {
       const userData = JSON.parse(savedUser);
       setUser(userData);
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+      refreshProfile(); // Refresh profile data on initial load
     }
     setLoading(false);
   }, []);
@@ -22,16 +55,15 @@ export const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     try {
       const response = await axios.post(
-        "http://localhost:3000/api/auth/login",
+        `${API_URL}/api/auth/login`,
         { email, password }
       );
       if (response.data.success) {
         const { token, user } = response.data;
-        // Perbaiki URL foto profil
         const userData = {
           ...user,
           photo_profile: user.photo_profile ? 
-            `http://localhost:3000//uploads/profiles/${user.photo_profile}` : null
+            `${API_URL}/uploads/profiles/${user.photo_profile}` : null
         };
         
         localStorage.setItem("token", token);
@@ -55,19 +87,18 @@ export const AuthProvider = ({ children }) => {
   const updateProfile = async (formData) => {
     try {
       const endpoint = user.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
-      const response = await axios.put(`http://localhost:3000${endpoint}`, formData, {
+      const response = await axios.put(`${API_URL}${endpoint}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
       });
 
       if (response.data.success) {
-        const updatedUser = { ...user, ...response.data.data };
-        localStorage.setItem("user", JSON.stringify(updatedUser));
-        setUser(updatedUser);
+        await refreshProfile(); // Refresh the entire profile after update
+        return response.data;
       }
-      return response.data;
     } catch (error) {
+      console.error('Error updating profile:', error);
       throw error.response?.data || { message: "Update profile error" };
     }
   };
@@ -75,7 +106,7 @@ export const AuthProvider = ({ children }) => {
   const updatePassword = async (passwordData) => {
     try {
       const endpoint = user.role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
-      const response = await axios.put(`http://localhost:3000${endpoint}`, passwordData);
+      const response = await axios.put(`${API_URL}${endpoint}`, passwordData);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: "Update password error" };
@@ -88,7 +119,8 @@ export const AuthProvider = ({ children }) => {
     login,
     logout,
     updateProfile,
-    updatePassword
+    updatePassword,
+    refreshProfile
   };
 
   return (

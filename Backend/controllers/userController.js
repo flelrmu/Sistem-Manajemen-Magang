@@ -5,8 +5,7 @@ const fs = require("fs");
 const responseUtil = require("../utils/response");
 
 const userController = {
-  // Get profile mahasiswa
-  // Get profile mahasiswa
+  // Update getProfile method
   getProfile: async (req, res) => {
     try {
       const userId = req.user.id;
@@ -110,120 +109,7 @@ const userController = {
     }
   },
 
-  // Get recent activities
-  getRecentActivities: async (req, res) => {
-    try {
-      const userId = req.user.id;
-
-      const [activities] = await db.execute(
-        `SELECT activity, created_at
-           FROM activities
-           WHERE user_id = ?
-           ORDER BY created_at DESC
-           LIMIT 10`,
-        [userId]
-      );
-
-      res.json({
-        success: true,
-        data: activities,
-      });
-    } catch (error) {
-      console.error("Get recent activities error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Terjadi kesalahan saat mengambil aktivitas terbaru",
-      });
-    }
-  },
-
-  getMahasiswaProfile: async (req, res) => {
-    try {
-      const userId = req.user.id;
-
-      // Get mahasiswa data including QR code
-      const [mahasiswa] = await db.execute(
-        `SELECT m.nim, m.nama, m.qr_code
-         FROM mahasiswa m
-         JOIN users u ON m.user_id = u.id
-         WHERE u.id = ?`,
-        [userId]
-      );
-
-      if (mahasiswa.length === 0) {
-        return responseUtil.notFound(res, "Mahasiswa tidak ditemukan");
-      }
-
-      // Construct full QR code URL if exists
-      const qrCodeData = mahasiswa[0].qr_code ? {
-        ...mahasiswa[0],
-        qr_code: `${req.protocol}://${req.get('host')}/uploads/${mahasiswa[0].qr_code}`
-      } : mahasiswa[0];
-
-      return responseUtil.success(res, qrCodeData);
-    } catch (error) {
-      console.error("Get mahasiswa profile error:", error);
-      return responseUtil.error(res, "Terjadi kesalahan saat mengambil data mahasiswa");
-    }
-  },
-
-  getQRCode: async (req, res) => {
-    try {
-      const userId = req.user.id;
-
-      const [mahasiswa] = await db.execute(
-        `SELECT m.id, m.nim, m.nama, m.qr_code 
-         FROM mahasiswa m 
-         WHERE m.user_id = ?`,
-        [userId]
-      );
-
-      if (!mahasiswa.length || !mahasiswa[0].qr_code) {
-        return responseUtil.notFound(res, "QR Code tidak ditemukan");
-      }
-
-      const qrCodeUrl = `${req.protocol}://${req.get('host')}/uploads/${mahasiswa[0].qr_code}`;
-
-      return responseUtil.success(res, { qr_code: qrCodeUrl });
-    } catch (error) {
-      console.error("Get QR Code error:", error);
-      return responseUtil.error(res, "Terjadi kesalahan saat mengambil QR Code");
-    }
-  },
-
-  // Get status magang
-  getStatusMagang: async (req, res) => {
-    try {
-      const userId = req.user.id;
-
-      const [status] = await db.execute(
-        `SELECT status
-           FROM mahasiswa
-           WHERE user_id = ?`,
-        [userId]
-      );
-
-      if (status.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: "Status magang tidak ditemukan",
-        });
-      }
-
-      res.json({
-        success: true,
-        data: status[0].status,
-      });
-    } catch (error) {
-      console.error("Get status magang error:", error);
-      res.status(500).json({
-        success: false,
-        message: "Terjadi kesalahan saat mengambil status magang",
-      });
-    }
-  },
-
-  // Update profile mahasiswa
+  // Update updateProfile method
   updateProfile: async (req, res) => {
     const connection = await db.getConnection();
     try {
@@ -239,8 +125,6 @@ const userController = {
           message: "Akses ditolak. Data mahasiswa tidak ditemukan.",
         });
       }
-
-      console.log("updateProfile - User:", req.user);
 
       const { email, no_telepon, alamat } = req.body;
       const photoProfile = req.file ? req.file.filename : null;
@@ -337,7 +221,9 @@ const userController = {
 
       // Add full URL for photo_profile
       if (updatedUser[0].photo_profile) {
-        updatedUser[0].photo_profile = `/uploads/profiles/${updatedUser[0].photo_profile}`;
+        updatedUser[0].photo_profile = `${req.protocol}://${req.get(
+          "host"
+        )}/uploads/profiles/${updatedUser[0].photo_profile}`;
       }
 
       res.json({
@@ -354,6 +240,131 @@ const userController = {
       });
     } finally {
       connection.release();
+    }
+  },
+
+  // Get recent activities
+  getRecentActivities: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const [activities] = await db.execute(
+        `SELECT activity, created_at
+           FROM activities
+           WHERE user_id = ?
+           ORDER BY created_at DESC
+           LIMIT 10`,
+        [userId]
+      );
+
+      res.json({
+        success: true,
+        data: activities,
+      });
+    } catch (error) {
+      console.error("Get recent activities error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil aktivitas terbaru",
+      });
+    }
+  },
+
+  getMahasiswaProfile: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      // Get mahasiswa data including QR code
+      const [mahasiswa] = await db.execute(
+        `SELECT m.nim, m.nama, m.qr_code
+         FROM mahasiswa m
+         JOIN users u ON m.user_id = u.id
+         WHERE u.id = ?`,
+        [userId]
+      );
+
+      if (mahasiswa.length === 0) {
+        return responseUtil.notFound(res, "Mahasiswa tidak ditemukan");
+      }
+
+      // Construct full QR code URL if exists
+      const qrCodeData = mahasiswa[0].qr_code
+        ? {
+            ...mahasiswa[0],
+            qr_code: `${req.protocol}://${req.get("host")}/uploads/${
+              mahasiswa[0].qr_code
+            }`,
+          }
+        : mahasiswa[0];
+
+      return responseUtil.success(res, qrCodeData);
+    } catch (error) {
+      console.error("Get mahasiswa profile error:", error);
+      return responseUtil.error(
+        res,
+        "Terjadi kesalahan saat mengambil data mahasiswa"
+      );
+    }
+  },
+
+  getQRCode: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const [mahasiswa] = await db.execute(
+        `SELECT m.id, m.nim, m.nama, m.qr_code 
+         FROM mahasiswa m 
+         WHERE m.user_id = ?`,
+        [userId]
+      );
+
+      if (!mahasiswa.length || !mahasiswa[0].qr_code) {
+        return responseUtil.notFound(res, "QR Code tidak ditemukan");
+      }
+
+      const qrCodeUrl = `${req.protocol}://${req.get("host")}/uploads/${
+        mahasiswa[0].qr_code
+      }`;
+
+      return responseUtil.success(res, { qr_code: qrCodeUrl });
+    } catch (error) {
+      console.error("Get QR Code error:", error);
+      return responseUtil.error(
+        res,
+        "Terjadi kesalahan saat mengambil QR Code"
+      );
+    }
+  },
+
+  // Get status magang
+  getStatusMagang: async (req, res) => {
+    try {
+      const userId = req.user.id;
+
+      const [status] = await db.execute(
+        `SELECT status
+           FROM mahasiswa
+           WHERE user_id = ?`,
+        [userId]
+      );
+
+      if (status.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Status magang tidak ditemukan",
+        });
+      }
+
+      res.json({
+        success: true,
+        data: status[0].status,
+      });
+    } catch (error) {
+      console.error("Get status magang error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Terjadi kesalahan saat mengambil status magang",
+      });
     }
   },
 

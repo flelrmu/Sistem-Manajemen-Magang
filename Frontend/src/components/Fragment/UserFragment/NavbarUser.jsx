@@ -5,11 +5,11 @@ import { UserCircle, LogOut, ChevronDown, AlignJustify } from "lucide-react";
 import { useAuth } from "../../Context/UserContext";
 
 const NavbarUser = ({ type }) => {
-  const { user, logout } = useAuth(); // Get user and logout function from context
+  const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [toggle, setToggle] = useState(false);
   const dropdownRef = useRef(null);
-  const navigate = useNavigate(); // Use navigate hook to programmatically navigate
+  const navigate = useNavigate();
 
   const handleToggle = () => {
     setToggle(!toggle);
@@ -17,8 +17,8 @@ const NavbarUser = ({ type }) => {
 
   const handleLogout = async () => {
     try {
-      await logout(); // Call logout from context
-      navigate("/login"); // Redirect to login page after logout
+      await logout();
+      navigate("/login");
     } catch (error) {
       console.error("Logout error:", error);
     }
@@ -55,18 +55,19 @@ const NavbarUser = ({ type }) => {
                     Magang
                   </span>
                 </div>
-                {user?.photo_profile ? (
-                  <img
-                    src={`http://localhost:3000/uploads/profiles/${user.photo_profile}`}
-                    alt="Profile"
-                    className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 object-cover"
-                  />
-                ) : (
-                  <div className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 bg-gray-200 flex items-center justify-center">
-                    <UserCircle className="h-6 w-6 text-gray-500" />
-                  </div>
-                )}
-
+                <div className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 overflow-hidden">
+                  {user?.photo_profile ? (
+                    <img
+                      src={user.photo_profile}
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                      <UserCircle className="h-6 w-6 text-gray-500" />
+                    </div>
+                  )}
+                </div>
                 <ChevronDown
                   className={`h-4 w-4 text-gray-500 transition-transform duration-200 ${
                     isDropdownOpen ? "transform rotate-180" : ""
@@ -77,14 +78,13 @@ const NavbarUser = ({ type }) => {
 
             <div
               className={`
-                        absolute right-0 top-full mt-1 w-60 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5
-                        transform transition-all duration-200 ease-in-out
-                        ${
-                          isDropdownOpen
-                            ? "opacity-100 translate-y-0 visible"
-                            : "opacity-0 -translate-y-2 invisible"
-                        }
-                      `}
+                absolute right-0 top-full mt-1 w-60 rounded-xl bg-white shadow-lg ring-1 ring-black ring-opacity-5
+                transform transition-all duration-200 ease-in-out
+                ${isDropdownOpen
+                  ? "opacity-100 translate-y-0 visible"
+                  : "opacity-0 -translate-y-2 invisible"
+                }
+              `}
             >
               <div className="p-2">
                 <div className="text-xs font-medium text-gray-400 px-3 py-2">

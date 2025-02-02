@@ -1,10 +1,8 @@
 import React from "react";
 import AbsensiCard from "../../Fragment/AdminFragment/AbsensiCard";
-import FilterAbsensi from "../../Fragment/AdminFragment/FilterAbsensi";
 import DataAbsensi from "../../Fragment/AdminFragment/DataAbsensi";
-import GreenButton from "../../Elements/Button/GreenButton";
-import PageTitle from "../../Elements/Items/PageTitle";
 import IzinAbsensi from "../../Fragment/AdminFragment/IzinAbsensi";
+import PageTitle from "../../Elements/Items/PageTitle";
 
 function ManagementAbsen() {
   return (
@@ -12,7 +10,6 @@ function ManagementAbsen() {
       <div className="max-w-7xl mx-auto py-6">
         <div className="flex justify-between items-center mb-8">
           <PageTitle>Manajemen Absensi</PageTitle>
-          <GreenButton>Export Absensi</GreenButton>
         </div>
         <AbsensiCard />
         <DataAbsensi />

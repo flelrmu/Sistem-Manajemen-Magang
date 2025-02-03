@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Plus, Download } from "lucide-react";
+import Swal from "sweetalert2";
 import ActivityModal from "../../Fragment/UserFragment/Activity";
 import LogbookCard from "../../Fragment/UserFragment/LogbookCard";
 import LogbookData from "../../Fragment/UserFragment/LogbookData";
@@ -33,11 +34,7 @@ const LogbookUser = () => {
 
   const handleSubmitLogbook = async (logbookData) => {
     try {
-      if (
-        !logbookData.tanggal ||
-        !logbookData.aktivitas ||
-        !logbookData.progress
-      ) {
+      if (!logbookData.tanggal || !logbookData.aktivitas || !logbookData.progress) {
         throw new Error("Mohon lengkapi semua field yang diperlukan");
       }
 
@@ -59,17 +56,25 @@ const LogbookUser = () => {
       if (response.data.success) {
         setIsModalOpen(false);
         await fetchLogbooks();
-        alert("Logbook berhasil disimpan");
+        Swal.fire({
+          title: 'Berhasil!',
+          text: 'Logbook berhasil disimpan',
+          icon: 'success',
+          confirmButtonColor: '#3085d6',
+          confirmButtonText: 'OK'
+        });
       } else {
         throw new Error(response.data.message);
       }
     } catch (error) {
       console.error("Error submitting logbook:", error);
-      alert(
-        error.response?.data?.message ||
-          error.message ||
-          "Terjadi kesalahan saat menyimpan logbook"
-      );
+      Swal.fire({
+        title: 'Gagal!',
+        text: error.response?.data?.message || error.message || "Terjadi kesalahan saat menyimpan logbook",
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'OK'
+      });
     }
   };
 
@@ -92,17 +97,25 @@ const LogbookUser = () => {
 
       if (response.data.success) {
         await fetchLogbooks();
-        alert("Logbook berhasil diperbarui");
+        Swal.fire({
+          title: 'Berhasil!',
+          text: 'Logbook berhasil diperbarui',
+          icon: 'success',
+          confirmButtonColor: '#3085d6',
+          confirmButtonText: 'OK'
+        });
       } else {
         throw new Error(response.data.message);
       }
     } catch (error) {
       console.error("Error updating logbook:", error);
-      alert(
-        error.response?.data?.message ||
-          error.message ||
-          "Terjadi kesalahan saat memperbarui logbook"
-      );
+      Swal.fire({
+        title: 'Gagal!',
+        text: error.response?.data?.message || error.message || "Terjadi kesalahan saat memperbarui logbook",
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'OK'
+      });
     }
   };
 
@@ -122,7 +135,13 @@ const LogbookUser = () => {
         const reader = new FileReader();
         reader.onload = () => {
           const result = JSON.parse(reader.result);
-          alert(result.message || "Terjadi kesalahan saat mengunduh logbook");
+          Swal.fire({
+            title: 'Gagal!',
+            text: result.message || "Terjadi kesalahan saat mengunduh logbook",
+            icon: 'error',
+            confirmButtonColor: '#d33',
+            confirmButtonText: 'OK'
+          });
         };
         reader.readAsText(response.data);
         return;
@@ -141,9 +160,24 @@ const LogbookUser = () => {
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+
+      // Show success message after download
+      Swal.fire({
+        title: 'Berhasil!',
+        text: 'File logbook berhasil diunduh',
+        icon: 'success',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+      });
     } catch (error) {
       console.error("Error downloading logbook:", error);
-      alert("Terjadi kesalahan saat mengunduh logbook");
+      Swal.fire({
+        title: 'Gagal!',
+        text: "Terjadi kesalahan saat mengunduh logbook",
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'OK'
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -184,7 +218,6 @@ const LogbookUser = () => {
           </div>
         </div>
 
-        {/* Always show cards and data table */}
         <LogbookCard logbooks={logbooks} />
         <LogbookData logbooks={logbooks} onEdit={handleEditLogbook} />
 

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Download } from "lucide-react";
+import Swal from 'sweetalert2';
 import LogbookCard from "../../Fragment/AdminFragment/LogbookCard";
 import FilterLogbook from "../../Fragment/AdminFragment/FilterLogbook";
 import DataLogbook from "../../Fragment/AdminFragment/DataLogbook";
@@ -59,26 +60,24 @@ function ManagementLogbook() {
         { responseType: 'blob' }
       );
 
-      // Create a blob from the PDF stream
       const blob = new Blob([response.data], { type: 'application/pdf' });
-      
-      // Create object URL
       const url = window.URL.createObjectURL(blob);
-      
-      // Create temporary link and trigger download
       const link = document.createElement('a');
       link.href = url;
       link.download = `logbook_${selectedUser.name}_${new Date().toISOString().split('T')[0]}.pdf`;
       document.body.appendChild(link);
       link.click();
-      
-      // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
     } catch (error) {
       console.error('Error downloading logbook:', error);
-      setError('Gagal mengunduh logbook');
+      await Swal.fire({
+        title: 'Gagal!',
+        text: 'Gagal mengunduh logbook',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
     } finally {
       setIsDownloading(false);
     }
@@ -86,20 +85,42 @@ function ManagementLogbook() {
 
   const handleApproveLogbook = async (logbookId) => {
     try {
-      const response = await axiosInstance.put(`/api/logbook/${logbookId}/status`, {
-        status: 'approved'
+      const result = await Swal.fire({
+        title: 'Konfirmasi Persetujuan',
+        text: 'Apakah Anda yakin ingin menyetujui logbook ini?',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Setujui',
+        cancelButtonText: 'Batal',
+        confirmButtonColor: '#10B981',
+        cancelButtonColor: '#6B7280'
       });
-  
-      if (response.data.success) {
-        // Update both the refresh trigger and fetch new data
-        setRefreshTrigger(prev => prev + 1);
-        // We're keeping the current filters when fetching
-        await fetchLogbooks(filters);
-        alert('Logbook berhasil diapprove');
+
+      if (result.isConfirmed) {
+        const response = await axiosInstance.put(`/api/logbook/${logbookId}/status`, {
+          status: 'approved'
+        });
+
+        if (response.data.success) {
+          setRefreshTrigger(prev => prev + 1);
+          await fetchLogbooks(filters);
+          
+          await Swal.fire({
+            title: 'Berhasil!',
+            text: 'Logbook telah disetujui',
+            icon: 'success',
+            confirmButtonColor: '#10B981'
+          });
+        }
       }
     } catch (error) {
       console.error('Error approving logbook:', error);
-      alert(error.response?.data?.message || 'Gagal mengapprove logbook');
+      await Swal.fire({
+        title: 'Gagal!',
+        text: error.response?.data?.message || 'Gagal menyetujui logbook',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
     }
   };
   
@@ -111,15 +132,24 @@ function ManagementLogbook() {
       });
   
       if (response.data.success) {
-        // Update both the refresh trigger and fetch new data
         setRefreshTrigger(prev => prev + 1);
-        // We're keeping the current filters when fetching
         await fetchLogbooks(filters);
-        alert('Logbook berhasil direject');
+        
+        await Swal.fire({
+          title: 'Berhasil!',
+          text: 'Logbook telah ditolak',
+          icon: 'success',
+          confirmButtonColor: '#10B981'
+        });
       }
     } catch (error) {
       console.error('Error rejecting logbook:', error);
-      alert(error.response?.data?.message || 'Gagal mereject logbook');
+      await Swal.fire({
+        title: 'Gagal!',
+        text: error.response?.data?.message || 'Gagal menolak logbook',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
     }
   };
 
@@ -167,7 +197,6 @@ function ManagementLogbook() {
           />
         )}
 
-        {/* Selected User Indicator */}
         {selectedUser && (
           <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg">
             Selected: {selectedUser.name}

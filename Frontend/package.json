@@ -33,6 +33,7 @@
     "react-spinners": "^0.15.0",
     "react-typed": "^2.0.12",
     "recharts": "^2.15.0",
+    "sweetalert2": "^11.15.10",
     "tailwind-scrollbar-hide": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.4"

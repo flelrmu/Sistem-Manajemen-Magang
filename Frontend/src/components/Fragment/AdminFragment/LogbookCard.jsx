@@ -52,7 +52,7 @@ function LogbookCard({ refreshTrigger = 0 }) {
           key={index} 
           className="group bg-white p-6 rounded-lg shadow hover:scale-105 duration-500"
         >
-          <h3 className="text-gray-600 mb-2 group-hover:text-red-500">{card.title}</h3>
+          <h3 className="text-gray-600 mb-2 group-hover:text-red-500 duration-500">{card.title}</h3>
           <p className={`text-3xl font-bold ${getColorClass(card.title)}`}>
             {card.value}
           </p>

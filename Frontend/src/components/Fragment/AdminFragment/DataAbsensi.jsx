@@ -25,7 +25,7 @@ function DataAbsensi() {
     try {
       setLoading(true);
       setError(null);
-
+  
       // Build params
       const params = {
         page,
@@ -36,14 +36,16 @@ function DataAbsensi() {
         params.status = filters.status;
       }
       
-      if (filters.tanggal) {
-        params.tanggal = filters.tanggal.toISOString().split("T")[0];
+      // Add date filters
+      if (filters.startDate && filters.endDate) {
+        params.startDate = filters.startDate;
+        params.endDate = filters.endDate;
       }
       
       if (filters.search) {
         params.search = filters.search;
       }
-
+  
       const response = await axios.get(
         "http://localhost:3000/api/absen/riwayat",
         {
@@ -240,7 +242,7 @@ function DataAbsensi() {
             className={`flex items-center px-4 py-2 rounded transition-colors ${
               selectedIds.length === 0
                 ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-500 text-white hover:bg-blue-600'
+                : 'text-white bg-green-600 hover:bg-green-700'
             }`}
           >
             {exportLoading ? (

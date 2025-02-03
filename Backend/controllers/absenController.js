@@ -165,8 +165,7 @@ const absenController = {
     try {
       const adminId = req.user.admin_id;
       const { startDate, endDate, status, search, page = 1, limit = 10 } = req.query;
-
-      // Query dasar untuk mengambil data absensi
+  
       let query = `
         SELECT 
           a.id,
@@ -182,42 +181,42 @@ const absenController = {
         INNER JOIN mahasiswa m ON a.mahasiswa_id = m.id
         WHERE m.admin_id = ?
       `;
-
+  
       const params = [adminId];
-
-      // Tambahkan filter tanggal jika ada
+  
+      // Add date filter
       if (startDate && endDate) {
         query += " AND DATE(a.tanggal) BETWEEN ? AND ?";
         params.push(startDate, endDate);
       }
-
-      // Tambahkan filter status jika ada
+  
+      // Add status filter
       if (status && status !== "Semua Status") {
         query += " AND a.status_kehadiran = ?";
         params.push(status.toLowerCase());
       }
-
-      // Tambahkan filter pencarian nama atau NIM
+  
+      // Add search filter
       if (search) {
         query += " AND (m.nama LIKE ? OR m.nim LIKE ?)";
         params.push(`%${search}%`, `%${search}%`);
       }
-
+  
       // Get total count for pagination
       const [totalResult] = await db.execute(
         `SELECT COUNT(*) as total FROM (${query}) as subquery`,
         params
       );
       const total = totalResult[0].total;
-
+  
       // Add pagination
       const offset = (page - 1) * limit;
       query += " ORDER BY a.tanggal DESC, a.waktu_masuk DESC LIMIT ? OFFSET ?";
       params.push(parseInt(limit), offset);
-
+  
       // Execute final query
       const [riwayat] = await db.execute(query, params);
-
+  
       res.json({
         success: true,
         data: riwayat,
@@ -234,7 +233,6 @@ const absenController = {
     }
   },
 
-  // Add this function to absenController.js
 
   getAttendanceStats: async (req, res) => {
     try {

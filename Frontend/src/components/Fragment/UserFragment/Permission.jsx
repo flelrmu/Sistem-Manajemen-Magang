@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuth } from '../../Context/UserContext';
+import Swal from 'sweetalert2';
 
 const PermissionModal = ({ isOpen, onClose }) => {
   const { user } = useAuth();
@@ -62,9 +63,28 @@ const PermissionModal = ({ isOpen, onClose }) => {
         }
       });
 
-      onClose();
-      // Optional: Add success notification
+      // Show success alert
+      Swal.fire({
+        title: 'Berhasil!',
+        text: 'Pengajuan izin berhasil dikirim',
+        icon: 'success',
+        confirmButtonColor: '#3085d6',
+        confirmButtonText: 'OK'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          onClose();
+        }
+      });
+
     } catch (error) {
+      // Show error alert
+      Swal.fire({
+        title: 'Gagal!',
+        text: error.response?.data?.message || 'Terjadi kesalahan saat mengajukan izin',
+        icon: 'error',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'OK'
+      });
       setError(error.response?.data?.message || 'Terjadi kesalahan saat mengajukan izin');
     } finally {
       setLoading(false);

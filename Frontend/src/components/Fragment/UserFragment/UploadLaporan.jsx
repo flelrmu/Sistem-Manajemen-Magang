@@ -2,8 +2,9 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 import axios from 'axios';
 import { useAuth } from '../../Context/UserContext';
+import Swal from 'sweetalert2';
 
-const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
+const UploadLaporan = ({ isOpen, onClose, onSuccess, onUploadComplete }) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -13,6 +14,38 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
     catatan: '',
     file: null
   });
+
+  const showSuccessAlert = () => {
+    Swal.fire({
+      title: 'Berhasil!',
+      text: 'Laporan berhasil diunggah',
+      icon: 'success',
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#3B82F6',
+      showClass: {
+        popup: 'animate__animated animate__fadeInDown'
+      },
+      hideClass: {
+        popup: 'animate__animated animate__fadeOutUp'
+      }
+    });
+  };
+
+  const showErrorAlert = (message) => {
+    Swal.fire({
+      title: 'Gagal!',
+      text: message,
+      icon: 'error',
+      confirmButtonText: 'OK',
+      confirmButtonColor: '#EF4444',
+      showClass: {
+        popup: 'animate__animated animate__fadeInDown'
+      },
+      hideClass: {
+        popup: 'animate__animated animate__fadeOutUp'
+      }
+    });
+  };
 
   const handleChange = (e) => {
     const { name, value, files } = e.target;
@@ -24,15 +57,15 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
 
   const validateForm = () => {
     if (!formData.versi) {
-      setError('Versi laporan wajib diisi');
+      showErrorAlert('Versi laporan wajib diisi');
       return false;
     }
     if (!formData.file) {
-      setError('File laporan wajib diunggah');
+      showErrorAlert('File laporan wajib diunggah');
       return false;
     }
     if (formData.progress && (formData.progress < 0 || formData.progress > 100)) {
-      setError('Progress harus antara 0-100');
+      showErrorAlert('Progress harus antara 0-100');
       return false;
     }
     return true;
@@ -44,7 +77,17 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
 
     if (!validateForm()) return;
 
-    setLoading(true);
+    // Show loading state with SweetAlert2
+    Swal.fire({
+      title: 'Mengunggah...',
+      html: 'Mohon tunggu sebentar',
+      allowOutsideClick: false,
+      showConfirmButton: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
     const formPayload = new FormData();
     formPayload.append('versi', formData.versi);
     formPayload.append('progress', formData.progress);
@@ -54,7 +97,8 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
     try {
       await axios.post('http://localhost:3000/api/reports', formPayload, {
         headers: {
-          'Content-Type': 'multipart/form-data'
+          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
 
@@ -65,12 +109,16 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
         file: null
       });
 
-      if (onSuccess) {
-        onSuccess();
-      }
+      showSuccessAlert();
+      
+      // Call both callback functions
+      if (onSuccess) onSuccess();
+      if (onUploadComplete) onUploadComplete();
+      
       onClose();
     } catch (error) {
-      setError(error.response?.data?.message || 'Terjadi kesalahan saat mengunggah laporan');
+      const errorMessage = error.response?.data?.message || 'Terjadi kesalahan saat mengunggah laporan';
+      showErrorAlert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -93,12 +141,6 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6">
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded">
-              {error}
-            </div>
-          )}
-
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">

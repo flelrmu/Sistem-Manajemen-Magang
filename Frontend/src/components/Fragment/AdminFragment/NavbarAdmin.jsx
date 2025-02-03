@@ -72,7 +72,7 @@ const NavbarAdmin = ({ type }) => {
                   <img
                     src={getProfilePhotoUrl()}
                     alt="Profile"
-                    className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-200 object-cover"
+                    className="h-9 w-9 rounded-full ring-2 ring-gray-100 duration-500 group-hover:ring-red-300 object-cover"
                     onError={(e) => {
                       e.target.onerror = null;
                       e.target.src = null;

@@ -21,13 +21,15 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.success) {
-        const userData = response.data.data.profile;
-        // Fix photo_profile URL
+        const userData = response.data.data.profile || response.data.data;
+        // Ensure photo_profile URL is correctly formatted
         if (userData.photo_profile) {
-          // Remove any potential double URL
           const fileName = userData.photo_profile.split('/').pop();
           userData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
         }
+        
+        // Preserve role information
+        userData.role = user?.role || userData.role;
         
         localStorage.setItem("user", JSON.stringify(userData));
         setUser(userData);
@@ -39,16 +41,60 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const login = async (email, password) => {
+    try {
+      const loginResponse = await axios.post(`${API_URL}/api/auth/login`, {
+        email,
+        password
+      });
+  
+      if (loginResponse.data.success) {
+        const { token } = loginResponse.data;
+        
+        // Set token first
+        localStorage.setItem("token", token);
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+  
+        // Immediately fetch complete profile data
+        const endpoint = loginResponse.data.user.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
+        const profileResponse = await axios.get(`${API_URL}${endpoint}`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+  
+        if (profileResponse.data.success) {
+          const completeUserData = {
+            ...(profileResponse.data.data.profile || profileResponse.data.data),
+            role: loginResponse.data.user.role
+          };
+  
+          // Process photo_profile URL
+          if (completeUserData.photo_profile) {
+            const fileName = completeUserData.photo_profile.split('/').pop();
+            completeUserData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
+          }
+  
+          // Update state first, then localStorage
+          setUser(completeUserData);
+          localStorage.setItem("user", JSON.stringify(completeUserData));
+          return { success: true, user: completeUserData };
+        }
+      }
+      
+      throw new Error(loginResponse.data.message || "Login failed");
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error.response?.data || { message: "Login error" };
+    }
+  };
+
   const updateProfile = async (formData) => {
     try {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Token not found");
 
-      const userStr = localStorage.getItem("user");
-      const currentUser = userStr ? JSON.parse(userStr) : null;
-      const role = currentUser?.role;
-
-      const endpoint = role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
+      const endpoint = user?.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
       
       const response = await axios.put(`${API_URL}${endpoint}`, formData, {
         headers: {
@@ -58,18 +104,18 @@ export const AuthProvider = ({ children }) => {
       });
 
       if (response.data.success) {
-        // Preserve the role in the updated user data
         const updatedUser = {
-          ...response.data.data,
-          role: currentUser.role
+          ...(response.data.data.profile || response.data.data),
+          role: user.role
         };
 
         if (updatedUser.photo_profile && !updatedUser.photo_profile.startsWith('http')) {
           updatedUser.photo_profile = `${API_URL}/uploads/profiles/${updatedUser.photo_profile}`;
         }
 
-        localStorage.setItem("user", JSON.stringify(updatedUser));
+        // Update state first, then localStorage
         setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
         return response.data;
       }
       
@@ -100,39 +146,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (email, password) => {
-    try {
-      const response = await axios.post(`${API_URL}/api/auth/login`, {
-        email,
-        password
-      });
 
-      if (response.data.success) {
-        const { token, user: userData } = response.data;
-        
-        // Process photo_profile URL if it exists
-        const processedUser = {
-          ...userData,
-          photo_profile: userData.photo_profile ? 
-            `${API_URL}/uploads/profiles/${userData.photo_profile}` : null
-        };
-        
-        localStorage.setItem("token", token);
-        localStorage.setItem("user", JSON.stringify(processedUser));
-        
-        // Set default authorization header
-        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-        
-        setUser(processedUser);
-        return response.data;
-      }
-      
-      throw new Error(response.data.message || "Login failed");
-    } catch (error) {
-      console.error('Login error:', error);
-      throw error.response?.data || { message: "Login error" };
-    }
-  };
 
   const logout = () => {
     localStorage.removeItem("token");

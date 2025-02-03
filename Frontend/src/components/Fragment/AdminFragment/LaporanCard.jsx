@@ -120,14 +120,14 @@ function LaporanCard({ filters = {} }) {
         {statCards.map((stat, index) => (
           <div
             key={index}
-            className="bg-white rounded-lg p-6 shadow hover:scale-105 duration-500 transition-transform"
+            className="bg-white group rounded-lg p-6 shadow hover:scale-105 duration-500"
           >
             <div className="flex items-center gap-3">
               <div className={getIconColor(stat.title)}>
                 {getIcon(stat.title)}
               </div>
               <div>
-                <h3 className="text-sm font-medium text-gray-600">
+                <h3 className="text-sm font-medium text-gray-600 group-hover:text-red-500 duration-500">
                   {stat.title}
                 </h3>
                 <div className="mt-1">

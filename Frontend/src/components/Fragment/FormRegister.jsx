@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Calendar } from "lucide-react";
+import Swal from 'sweetalert2';
 import Button from "../Elements/Button/Button";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import axios from "axios"; // Pastikan axios sudah diinstall
+import axios from "axios";
 
 function FormRegister() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
   const [adminUsers, setAdminUsers] = useState([]);
@@ -32,15 +32,18 @@ function FormRegister() {
   useEffect(() => {
     const fetchAdminUsers = async () => {
       try {
-        const response = await axios.get(
-          "http://localhost:3000/api/admin/users"
-        );
+        const response = await axios.get("http://localhost:3000/api/admin/users");
         if (response.data.success) {
           setAdminUsers(response.data.admins);
         }
       } catch (err) {
         console.error("Error fetching admin users:", err);
-        setError("Gagal memuat daftar admin");
+        Swal.fire({
+          title: 'Error!',
+          text: 'Gagal memuat daftar admin',
+          icon: 'error',
+          confirmButtonColor: '#EF4444'
+        });
       }
     };
 
@@ -49,72 +52,80 @@ function FormRegister() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
 
     // Validasi password
     if (formData.password !== formData.konfirmasiPassword) {
-      setError("Password dan konfirmasi password tidak cocok");
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Password dan konfirmasi password tidak cocok',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
       return;
     }
 
     // Validasi tanggal
     if (!startDate || !endDate) {
-      setError("Tanggal mulai dan selesai harus diisi");
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Tanggal mulai dan selesai harus diisi',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
       return;
     }
 
     // Validasi admin
     if (!formData.admin_id) {
-      setError("Silakan pilih admin pembimbing");
+      await Swal.fire({
+        title: 'Error!',
+        text: 'Silakan pilih admin pembimbing',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
       return;
     }
 
     try {
       setLoading(true);
 
-      // Format data sesuai dengan yang diharapkan backend
       const registerData = {
         ...formData,
         tanggal_mulai: startDate.toISOString().split("T")[0],
         tanggal_selesai: endDate.toISOString().split("T")[0],
       };
 
-      // Hapus konfirmasiPassword karena tidak dibutuhkan backend
       delete registerData.konfirmasiPassword;
 
-      // Kirim request ke backend
       const response = await axios.post(
         "http://localhost:3000/api/auth/register",
         registerData
       );
 
       if (response.data.success) {
-        // Redirect ke halaman login
+        await Swal.fire({
+          title: 'Berhasil!',
+          text: 'Registrasi berhasil. Silakan login menggunakan akun Anda.',
+          icon: 'success',
+          confirmButtonColor: '#10B981'
+        });
         navigate("/login");
-      } else {
-        setError(response.data.message || "Terjadi kesalahan saat registrasi");
       }
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          "Terjadi kesalahan saat menghubungi server"
-      );
+      console.error('Registration error:', err);
+      await Swal.fire({
+        title: 'Gagal!',
+        text: err.response?.data?.message || 'Terjadi kesalahan saat registrasi',
+        icon: 'error',
+        confirmButtonColor: '#EF4444'
+      });
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="grid grid-cols-1 md:grid-cols-2 gap-6"
-    >
-      {error && (
-        <div className="col-span-full bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
-      )}
-
+    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div className="space-y-4">
         <div>
           <label className="block text-gray-700 mb-2">Nama</label>
@@ -132,9 +143,7 @@ function FormRegister() {
           <select
             className="w-full p-2 border rounded-md shadow-sm bg-white"
             value={formData.admin_id}
-            onChange={(e) =>
-              setFormData({ ...formData, admin_id: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, admin_id: e.target.value })}
             required
           >
             <option value="">Pilih Pembimbing Lapangan</option>
@@ -163,9 +172,7 @@ function FormRegister() {
             type="email"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.email}
-            onChange={(e) =>
-              setFormData({ ...formData, email: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             required
           />
         </div>
@@ -176,9 +183,7 @@ function FormRegister() {
             type="tel"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.no_telepon}
-            onChange={(e) =>
-              setFormData({ ...formData, no_telepon: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, no_telepon: e.target.value })}
             required
           />
         </div>
@@ -196,11 +201,7 @@ function FormRegister() {
             <button
               type="button"
               className="bg-gray-100 px-3 border-y border-r rounded-r-md"
-              onClick={() =>
-                document
-                  .querySelector(".react-datepicker__input-container input")
-                  .focus()
-              }
+              onClick={() => document.querySelector('.react-datepicker__input-container input').focus()}
             >
               <Calendar size={20} className="text-gray-500" />
             </button>
@@ -220,11 +221,7 @@ function FormRegister() {
             <button
               type="button"
               className="bg-gray-100 px-3 border-y border-r rounded-r-md"
-              onClick={() =>
-                document
-                  .querySelector(".react-datepicker__input-container input")
-                  .focus()
-              }
+              onClick={() => document.querySelector('.react-datepicker__input-container input').focus()}
             >
               <Calendar size={20} className="text-gray-500" />
             </button>
@@ -239,9 +236,7 @@ function FormRegister() {
             type="text"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.institusi}
-            onChange={(e) =>
-              setFormData({ ...formData, institusi: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, institusi: e.target.value })}
             required
           />
         </div>
@@ -251,9 +246,7 @@ function FormRegister() {
           <select
             className="w-full p-2 border rounded-md shadow-sm bg-white"
             value={formData.jenis_kelamin}
-            onChange={(e) =>
-              setFormData({ ...formData, jenis_kelamin: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, jenis_kelamin: e.target.value })}
             required
           >
             <option value="">Pilih Jenis Kelamin</option>
@@ -267,9 +260,7 @@ function FormRegister() {
           <textarea
             className="w-full p-2 border rounded-md shadow-sm h-24"
             value={formData.alamat}
-            onChange={(e) =>
-              setFormData({ ...formData, alamat: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, alamat: e.target.value })}
             required
           />
         </div>
@@ -280,24 +271,18 @@ function FormRegister() {
             type="password"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.password}
-            onChange={(e) =>
-              setFormData({ ...formData, password: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
           />
         </div>
 
         <div>
-          <label className="block text-gray-700 mb-2">
-            Konfirmasi Password
-          </label>
+          <label className="block text-gray-700 mb-2">Konfirmasi Password</label>
           <input
             type="password"
             className="w-full p-2 border rounded-md shadow-sm"
             value={formData.konfirmasiPassword}
-            onChange={(e) =>
-              setFormData({ ...formData, konfirmasiPassword: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, konfirmasiPassword: e.target.value })}
             required
           />
         </div>

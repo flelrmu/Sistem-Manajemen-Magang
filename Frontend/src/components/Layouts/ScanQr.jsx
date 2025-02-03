@@ -1,24 +1,14 @@
 import React, { useState } from "react";
 import QrScanner from "react-qr-scanner";
 import { useNavigate } from "react-router-dom";
-import { Alert, AlertTitle } from "@mui/material";
-import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogContentText,
-  DialogActions,
-  Button,
-  CircularProgress,
-} from "@mui/material";
+import { CircularProgress } from "@mui/material";
+import Swal from 'sweetalert2';
 import Background from "../Elements/Items/bg";
 import Logo from "../Elements/Logo/Logo";
 
 function ScanQr() {
   const [scanResult, setScanResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [alert, setAlert] = useState(null);
-  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const navigate = useNavigate();
 
   const handleScan = async (data) => {
@@ -77,21 +67,65 @@ function ScanQr() {
         const result = await response.json();
 
         if (result.success) {
-          setAlert({
-            type: "success",
-            title: "Absensi Berhasil",
-            message: result.message,
-          });
           setScanResult(result);
-          setShowSuccessDialog(true);
+          await Swal.fire({
+            title: '<div class="text-2xl font-bold mb-4">Absensi Berhasil! 🎉</div>',
+            html: `
+              <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+                <div class="space-y-3">
+                  <div class="flex items-center border-b border-gray-200 pb-3">
+                    <div class="w-24 text-gray-600">Nama</div>
+                    <div class="flex-1 font-medium">${result.data.nama}</div>
+                  </div>
+                  <div class="flex items-center border-b border-gray-200 pb-3">
+                    <div class="w-24 text-gray-600">Waktu</div>
+                    <div class="flex-1 font-medium">${result.data.waktu}</div>
+                  </div>
+                  <div class="flex items-center border-b border-gray-200 pb-3">
+                    <div class="w-24 text-gray-600">Status</div>
+                    <div class="flex-1">
+                      <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                        ${result.data.status}
+                      </span>
+                    </div>
+                  </div>
+                  ${result.data.dalam_radius !== undefined ? `
+                    <div class="flex items-center">
+                      <div class="w-24 text-gray-600">Lokasi</div>
+                      <div class="flex-1">
+                        <span class="px-3 py-1 ${result.data.dalam_radius ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm font-medium">
+                          ${result.data.dalam_radius ? 'Dalam radius' : 'Di luar radius'}
+                        </span>
+                      </div>
+                    </div>
+                  ` : ''}
+                </div>
+              </div>
+            `,
+            icon: 'success',
+            showConfirmButton: true,
+            confirmButtonText: 'Selesai',
+            confirmButtonColor: '#10B981',
+            allowOutsideClick: false,
+            customClass: {
+              popup: 'swal2-show',
+              container: 'swal2-container',
+              title: 'text-2xl font-bold mb-4'
+            }
+          }).then((result) => {
+            if (result.isConfirmed) {
+              handleDismiss();
+            }
+          });
         } else {
           throw new Error(result.message || "Gagal memproses absensi");
         }
       } catch (error) {
-        setAlert({
-          type: "error",
-          title: "Gagal",
-          message: error.message,
+        await Swal.fire({
+          title: 'Gagal!',
+          text: error.message,
+          icon: 'error',
+          confirmButtonColor: '#EF4444'
         });
       } finally {
         setIsLoading(false);
@@ -99,19 +133,18 @@ function ScanQr() {
     }
   };
 
-  const handleError = (err) => {
+  const handleError = async (err) => {
     console.error("Camera error:", err);
-    setAlert({
-      type: "error",
-      title: "Error",
-      message: "Gagal mengakses kamera. Pastikan kamera dalam keadaan aktif.",
+    await Swal.fire({
+      title: 'Error!',
+      text: 'Gagal mengakses kamera. Pastikan kamera dalam keadaan aktif.',
+      icon: 'error',
+      confirmButtonColor: '#EF4444'
     });
   };
 
   const handleDismiss = () => {
-    setAlert(null);
     setScanResult(null);
-    setShowSuccessDialog(false);
     window.location.reload();
   };
 
@@ -138,13 +171,6 @@ function ScanQr() {
               <h2 className="text-2xl font-semibold text-center mb-8">
                 Scan QR Code Absensi
               </h2>
-
-              {alert && !showSuccessDialog && (
-                <Alert severity={alert.type} sx={{ mb: 2 }}>
-                  <AlertTitle>{alert.title}</AlertTitle>
-                  {alert.message}
-                </Alert>
-              )}
 
               {!scanResult && !isLoading && (
                 <div className="relative mb-8 flex items-center justify-center">
@@ -187,63 +213,19 @@ function ScanQr() {
               )}
 
               <div className="text-center space-y-4">
-                {scanResult ? (
-                  <Button
-                    variant="contained"
-                    color="success"
-                    onClick={handleDismiss}
-                  >
-                    Scan Lagi
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    color="error"
+                {!scanResult && !isLoading && (
+                  <button
+                    className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                     onClick={() => navigate("/")}
                   >
                     Tutup
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Success Dialog */}
-      <Dialog
-        open={showSuccessDialog}
-        onClose={() => setShowSuccessDialog(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Absensi Berhasil!</DialogTitle>
-        <DialogContent>
-          <DialogContentText>
-            {scanResult?.message || "Proses absensi telah berhasil dilakukan."}
-            {scanResult?.data && (
-              <div style={{ marginTop: 16 }}>
-                <p>Nama: {scanResult.data.nama}</p>
-                <p>Waktu: {scanResult.data.waktu}</p>
-                <p>Status: {scanResult.data.status}</p>
-                {scanResult.data.dalam_radius !== undefined && (
-                  <p>
-                    Lokasi:{" "}
-                    {scanResult.data.dalam_radius
-                      ? "Dalam radius"
-                      : "Di luar radius"}
-                  </p>
-                )}
-              </div>
-            )}
-          </DialogContentText>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleDismiss} color="primary" autoFocus>
-            OK
-          </Button>
-        </DialogActions>
-      </Dialog>
       <Background />
     </div>
   );

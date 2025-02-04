@@ -5,7 +5,7 @@ import ActivityModal from "../../Fragment/UserFragment/Activity";
 import LogbookCard from "../../Fragment/UserFragment/LogbookCard";
 import LogbookData from "../../Fragment/UserFragment/LogbookData";
 import PageTitle from "../../Elements/Items/PageTitle";
-import axiosInstance from "../../../../../Backend/utils/axios";
+import axios from 'axios';
 
 const LogbookUser = () => {
   const [logbooks, setLogbooks] = useState([]);
@@ -22,7 +22,7 @@ const LogbookUser = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await axiosInstance.get("/api/logbook");
+      const response = await axios.get("http://localhost:3000/api/logbook");
       setLogbooks(response.data.success ? response.data.data : []);
     } catch (error) {
       console.error("Error fetching logbooks:", error);
@@ -47,7 +47,7 @@ const LogbookUser = () => {
         formData.append("file_dokumentasi", logbookData.file);
       }
 
-      const response = await axiosInstance.post("/api/logbook", formData, {
+      const response = await axios.post("http://localhost:3000/api/logbook", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },
@@ -85,8 +85,8 @@ const LogbookUser = () => {
       formData.append("aktivitas", editedLogbook.aktivitas);
       formData.append("progress", editedLogbook.progress);
 
-      const response = await axiosInstance.put(
-        `/api/logbook/${editedLogbook.id}`,
+      const response = await axios.put(
+        `http://localhost:3000/api/logbook/${editedLogbook.id}`,
         formData,
         {
           headers: {
@@ -125,7 +125,7 @@ const LogbookUser = () => {
     try {
       setIsDownloading(true);
 
-      const response = await axiosInstance.get("/api/logbook/export", {
+      const response = await axios.get("http://localhost:3000/api/logbook/export", {
         responseType: "blob",
       });
 

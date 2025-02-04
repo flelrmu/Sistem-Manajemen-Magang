@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Edit2 } from "lucide-react";
-import axiosInstance from "../../../../../Backend/utils/axios";
+import axios from 'axios';
 import ActivityModal from "./Activity";
 
 function LogbookData({ logbooks }) {
@@ -14,7 +14,7 @@ function LogbookData({ logbooks }) {
 
   const handleEditSubmit = async (formData) => {
     try {
-      const response = await axiosInstance.put(`/api/logbook/${selectedLogbook.id}`, formData);
+      const response = await axios.put(`http://localhost:3000/api/logbook/${selectedLogbook.id}`, formData);
       
       if (response.data.success) {
         setIsEditModalOpen(false);

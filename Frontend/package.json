@@ -2,12 +2,15 @@
   "name": "intership",
   "private": true,
   "version": "0.0.0",
+  "homepage": "https://username.github.io/Sistem-Manajemen-Magang",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d build"
   },
   "dependencies": {
     "@babel/runtime": "^7.26.0",
@@ -33,7 +36,7 @@
     "react-spinners": "^0.15.0",
     "react-typed": "^2.0.12",
     "recharts": "^2.15.0",
-    "sweetalert2": "^11.15.10",
+    "sweetalert2": "^11.6.13",
     "tailwind-scrollbar-hide": "^2.0.0",
     "tailwindcss-animate": "^1.0.7",
     "use-debounce": "^10.0.4"
@@ -49,6 +52,7 @@
     "eslint-plugin-react": "^7.37.2",
     "eslint-plugin-react-hooks": "^5.0.0",
     "eslint-plugin-react-refresh": "^0.4.16",
+    "gh-pages": "^6.3.0",
     "globals": "^15.14.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",

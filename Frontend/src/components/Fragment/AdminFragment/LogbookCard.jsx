@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import axiosInstance from "../../../../../Backend/utils/axios";
+import axios from 'axios';
 
 function LogbookCard({ refreshTrigger = 0 }) {
   const [stats, setStats] = useState({
@@ -15,7 +15,7 @@ function LogbookCard({ refreshTrigger = 0 }) {
 
   const fetchLogbookStats = async () => {
     try {
-      const response = await axiosInstance.get('/api/logbook');
+      const response = await axios.get('http://localhost:3000/api/logbook');
       if (response.data.success && response.data.data) {
         const logbooks = response.data.data;
         setStats({

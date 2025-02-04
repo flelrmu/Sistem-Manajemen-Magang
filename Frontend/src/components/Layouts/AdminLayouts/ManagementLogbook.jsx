@@ -5,7 +5,7 @@ import LogbookCard from "../../Fragment/AdminFragment/LogbookCard";
 import FilterLogbook from "../../Fragment/AdminFragment/FilterLogbook";
 import DataLogbook from "../../Fragment/AdminFragment/DataLogbook";
 import PageTitle from "../../Elements/Items/PageTitle";
-import axiosInstance from "../../../../../Backend/utils/axios";
+import axios from 'axios';
 
 function ManagementLogbook() {
   const [logbooks, setLogbooks] = useState([]);
@@ -25,7 +25,7 @@ function ManagementLogbook() {
       setIsLoading(true);
       setError(null);
       
-      const response = await axiosInstance.get('/api/logbook', { 
+      const response = await axios.get('http://localhost:3000/api/logbook', { 
         params: filterParams 
       });
       
@@ -55,8 +55,8 @@ function ManagementLogbook() {
     try {
       setIsDownloading(true);
       
-      const response = await axiosInstance.get(
-        `/api/logbook/export/${selectedUser.id}`, 
+      const response = await axios.get(
+        `http://localhost:3000/api/logbook/export/${selectedUser.id}`, 
         { responseType: 'blob' }
       );
 
@@ -97,7 +97,7 @@ function ManagementLogbook() {
       });
 
       if (result.isConfirmed) {
-        const response = await axiosInstance.put(`/api/logbook/${logbookId}/status`, {
+        const response = await axios.put(`http://localhost:3000/api/logbook/${logbookId}/status`, {
           status: 'approved'
         });
 
@@ -126,7 +126,7 @@ function ManagementLogbook() {
   
   const handleRejectLogbook = async (logbookId, catatanAdmin) => {
     try {
-      const response = await axiosInstance.put(`/api/logbook/${logbookId}/status`, {
+      const response = await axios.put(`http://localhost:3000/api/logbook/${logbookId}/status`, {
         status: 'rejected',
         catatan_admin: catatanAdmin
       });

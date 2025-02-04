@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, FileText, BookOpen, CalendarClock } from 'lucide-react';
-import axiosInstance from '../../../../../Backend/utils/axios';
+import axios from 'axios';
 
 function AktifitasTerbaru() {
   const [activities, setActivities] = useState([]);
@@ -13,20 +13,20 @@ function AktifitasTerbaru() {
         const dateParam = yesterday.toISOString().split('T')[0];
 
         const [logbooks, reports, permissions] = await Promise.all([
-          axiosInstance.get('/api/logbook', {
+          axios.get('http://localhost:3000/api/logbook', {
             params: { 
               startDate: dateParam,
               endDate: new Date().toISOString().split('T')[0],
             }
           }),
-          axiosInstance.get('/api/reports', {
+          axios.get('http://localhost:3000/api/reports', {
             params: { 
               startDate: dateParam,
               sort: 'created_at',
               order: 'desc'
             }
           }),
-          axiosInstance.get('/api/izin/history', {
+          axios.get('http://localhost:3000/api/izin/history', {
             params: {
               startDate: dateParam
             }

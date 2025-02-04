@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axiosInstance from '../../../../../Backend/utils/axios';
+import axios from 'axios';
 
 function UploadParaf() {
   const [parafUpload, setParafUpload] = useState({
@@ -14,7 +14,7 @@ function UploadParaf() {
   useEffect(() => {
     const fetchParafData = async () => {
       try {
-        const response = await axiosInstance.get("/api/admin/profile");
+        const response = await axios.get("http://localhost:3000/api/admin/profile");
         if (response.data.success && response.data.data.paraf_image) {
           setParafUpload((prev) => ({
             ...prev,
@@ -61,7 +61,7 @@ function UploadParaf() {
     formData.append("paraf_image", parafUpload.selectedFile);
 
     try {
-      const response = await axiosInstance.put("/api/admin/paraf", formData, {
+      const response = await axios.put("http://localhost:3000/api/admin/paraf", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

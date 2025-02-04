@@ -24,7 +24,7 @@ import "./index.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <BrowserRouter basename="/Magang">
+    <BrowserRouter basename="/Sistem-Manajemen-Magang">
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Navigate to="/login" replace />} />

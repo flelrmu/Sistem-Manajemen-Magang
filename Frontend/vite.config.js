@@ -14,26 +14,11 @@ export default defineConfig({
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          vendor: [
-            'react',
-            'react-dom',
-            'react-router-dom',
-            'axios',
-            // tambahkan library besar lainnya di sini
-          ],
-          // Pisahkan chunk berdasarkan fitur
-          utils: ['/src/utils'],
-          components: ['/src/components'],
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            return 'vendor';
+          }
         }
-      }
-    },
-    sourcemap: false, // Matikan sourcemap untuk produksi
-    minify: 'terser', // Gunakan terser untuk minifikasi yang lebih baik
-    terserOptions: {
-      compress: {
-        drop_console: true, // Hapus console.log di produksi
-        drop_debugger: true
       }
     }
   }

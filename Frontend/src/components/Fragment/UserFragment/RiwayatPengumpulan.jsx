@@ -18,7 +18,7 @@ function RiwayatPengumpulan() {
 
   const fetchReports = async () => {
     try {
-      const response = await axios.get('http://localhost:3000/api/reports', {
+      const response = await axios.get('http://157.245.206.178:3000/api/reports', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -36,7 +36,7 @@ function RiwayatPengumpulan() {
   const handleDownload = async (url, filename) => {
     try {
       // Pastikan URL lengkap
-      const fullUrl = `http://localhost:3000${url}`;
+      const fullUrl = `http://157.245.206.178:3000${url}`;
       console.log('Downloading from:', fullUrl);
   
       const response = await axios({

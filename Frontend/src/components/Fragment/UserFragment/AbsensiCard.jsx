@@ -12,7 +12,7 @@ function AbsensiCard() {
     const fetchStats = async () => {
       try {
         const response = await axios.get(
-          "http://localhost:3000/api/absen/attendance-stats"
+          "http://157.245.206.178:3000/api/absen/attendance-stats"
         );
         setStats(response.data.data);
         setLoading(false);

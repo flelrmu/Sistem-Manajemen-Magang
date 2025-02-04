@@ -15,7 +15,7 @@ function AbsensiCard() {
     const fetchStats = async () => {
       try {
         // Get total mahasiswa
-        const mahasiswaResponse = await axios.get('http://localhost:3000/api/admin/mahasiswa', {
+        const mahasiswaResponse = await axios.get('http://157.245.206.178:3000/api/admin/mahasiswa', {
           params: { status: 'aktif' },
           headers: {
             Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -26,7 +26,7 @@ function AbsensiCard() {
         const today = new Date().toISOString().split('T')[0];
 
         // Get attendance data
-        const attendanceResponse = await axios.get('http://localhost:3000/api/absen/riwayat', {
+        const attendanceResponse = await axios.get('http://157.245.206.178:3000/api/absen/riwayat', {
           params: {
             tanggal: today
           },

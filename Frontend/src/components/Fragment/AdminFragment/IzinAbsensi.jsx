@@ -16,7 +16,7 @@ function IzinAbsensi() {
 
   const fetchPermissions = async () => {
     try {
-      const response = await axios.get("http://localhost:3000/api/izin/history", {
+      const response = await axios.get("http://157.245.206.178:3000/api/izin/history", {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
@@ -77,7 +77,7 @@ function IzinAbsensi() {
   const submitAction = async (permissionId, status) => {
     try {
       await axios.put(
-        `http://localhost:3000/api/izin/${permissionId}/status`,
+        `http://157.245.206.178:3000/api/izin/${permissionId}/status`,
         { 
           status,
           alasan_response: "" // opsional

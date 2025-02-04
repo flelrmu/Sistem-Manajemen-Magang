@@ -20,7 +20,7 @@ function RiwayatAbsensi() {
       setError(null);
 
       const response = await axios.get(
-        "http://localhost:3000/api/absen/absensi",
+        "http://157.245.206.178:3000/api/absen/absensi",
         {
           params: {
             page,
@@ -70,7 +70,7 @@ function RiwayatAbsensi() {
     setExportLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:3000/api/absen/export-mahasiswa",
+        "http://157.245.206.178:3000/api/absen/export-mahasiswa",
         { selectedIds },
         {
           headers: {

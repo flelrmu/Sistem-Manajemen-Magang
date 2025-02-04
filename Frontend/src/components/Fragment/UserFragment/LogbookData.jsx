@@ -14,7 +14,7 @@ function LogbookData({ logbooks }) {
 
   const handleEditSubmit = async (formData) => {
     try {
-      const response = await axios.put(`http://localhost:3000/api/logbook/${selectedLogbook.id}`, formData);
+      const response = await axios.put(`http://157.245.206.178:3000/api/logbook/${selectedLogbook.id}`, formData);
       
       if (response.data.success) {
         setIsEditModalOpen(false);

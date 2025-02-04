@@ -3,7 +3,7 @@ import { Camera } from "lucide-react";
 import { useAuth } from "../../Context/UserContext";
 import axios from "axios";
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = "http://157.245.206.178:3000/api";
 
 function FormUser() {
   const { user, updateProfile, refreshProfile } = useAuth();

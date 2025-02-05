@@ -28,11 +28,7 @@ if (!fs.existsSync(uploadDir)){
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
-app.use(cors({
-  origin: '*',  // Mengizinkan semua origin
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 app.use(compression());
 app.use(morgan('dev'));
 app.use(express.json());

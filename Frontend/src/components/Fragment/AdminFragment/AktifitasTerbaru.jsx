@@ -13,20 +13,20 @@ function AktifitasTerbaru() {
         const dateParam = yesterday.toISOString().split('T')[0];
 
         const [logbooks, reports, permissions] = await Promise.all([
-          axios.get('http://157.245.206.178:3000/api/logbook', {
+          axios.get('http://api.simagang.tech/api/logbook', {
             params: { 
               startDate: dateParam,
               endDate: new Date().toISOString().split('T')[0],
             }
           }),
-          axios.get('http://157.245.206.178:3000/api/reports', {
+          axios.get('http://api.simagang.tech/api/reports', {
             params: { 
               startDate: dateParam,
               sort: 'created_at',
               order: 'desc'
             }
           }),
-          axios.get('http://157.245.206.178:3000/api/izin/history', {
+          axios.get('http://api.simagang.tech/api/izin/history', {
             params: {
               startDate: dateParam
             }

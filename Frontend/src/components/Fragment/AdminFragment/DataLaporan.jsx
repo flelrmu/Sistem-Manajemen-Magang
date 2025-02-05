@@ -173,7 +173,7 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
         ...filters
       }).toString();
 
-      const response = await axios.get(`http://157.245.206.178:3000/api/reports?${queryParams}`, {
+      const response = await axios.get(`http://api.simagang.tech/api/reports?${queryParams}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }
@@ -216,7 +216,7 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
   const handleDownload = async (url, filename) => {
     try {
       const response = await axios({
-        url: `http://157.245.206.178:3000${url}`,
+        url: `http://api.simagang.tech${url}`,
         method: 'GET',
         responseType: 'blob',
         headers: {
@@ -261,7 +261,7 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
 
       if (result.isConfirmed) {
         const response = await axios.post(
-          `http://157.245.206.178:3000/api/reports/${reportId}/review`,
+          `http://api.simagang.tech/api/reports/${reportId}/review`,
           {
             status: 'disetujui',
             feedback: 'Laporan disetujui'
@@ -334,7 +334,7 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
       }
 
       const response = await axios.post(
-        `http://157.245.206.178:3000/api/reports/${selectedReport.id}/review`,
+        `http://api.simagang.tech/api/reports/${selectedReport.id}/review`,
         data,
         {
           headers: {

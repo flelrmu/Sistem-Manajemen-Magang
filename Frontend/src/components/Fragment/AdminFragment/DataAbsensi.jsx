@@ -47,7 +47,7 @@ function DataAbsensi() {
       }
   
       const response = await axios.get(
-        "http://157.245.206.178:3000/api/absen/riwayat",
+        "http://api.simagang.tech/api/absen/riwayat",
         {
           params,
           headers: {
@@ -107,7 +107,7 @@ function DataAbsensi() {
     setExportLoading(true);
     try {
       const response = await axios.post(
-        "http://157.245.206.178:3000/api/absen/export-admin",
+        "http://api.simagang.tech/api/absen/export-admin",
         { selectedIds },
         {
           headers: {

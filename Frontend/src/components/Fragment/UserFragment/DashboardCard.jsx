@@ -25,7 +25,7 @@ const DashboardCard = () => {
     const fetchData = async () => {
       try {
         // Fetch profile data for dates and logbook stats
-        const profileResponse = await fetch('http://157.245.206.178:3000/api/user/profile', {
+        const profileResponse = await fetch('http://api.simagang.tech/api/user/profile', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -33,7 +33,7 @@ const DashboardCard = () => {
         const profileData = await profileResponse.json();
         
         // Fetch logbook data for submission details
-        const logbookResponse = await fetch('http://157.245.206.178:3000/api/logbook', {
+        const logbookResponse = await fetch('http://api.simagang.tech/api/logbook', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }
@@ -41,7 +41,7 @@ const DashboardCard = () => {
         const logbookData = await logbookResponse.json();
 
         // Fetch report status
-        const reportResponse = await fetch('http://157.245.206.178:3000/api/reports', {
+        const reportResponse = await fetch('http://api.simagang.tech/api/reports', {
           headers: {
             'Authorization': `Bearer ${localStorage.getItem('token')}`
           }

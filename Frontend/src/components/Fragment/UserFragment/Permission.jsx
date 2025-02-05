@@ -19,7 +19,7 @@ const PermissionModal = ({ isOpen, onClose }) => {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const response = await axios.get('http://157.245.206.178:3000/api/izin/categories');
+        const response = await axios.get('http://api.simagang.tech/api/izin/categories');
         setCategories(response.data);
       } catch (error) {
         console.error('Error fetching categories:', error);
@@ -57,7 +57,7 @@ const PermissionModal = ({ isOpen, onClose }) => {
         }
       });
 
-      await axios.post('http://157.245.206.178:3000/api/izin/submit', formPayload, {
+      await axios.post('http://api.simagang.tech/api/izin/submit', formPayload, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }

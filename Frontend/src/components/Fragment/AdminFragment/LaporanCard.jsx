@@ -27,7 +27,7 @@ function LaporanCard({ filters = {} }) {
       
       const queryParams = new URLSearchParams(filters).toString();
       const response = await axios.get(
-        `http://157.245.206.178:3000/api/reports/stats?${queryParams}`,
+        `http://api.simagang.tech/api/reports/stats?${queryParams}`,
         {
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`

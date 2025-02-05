@@ -15,7 +15,7 @@ function DashboardCard() {
     const fetchStats = async () => {
       try {
         const response = await axios.get(
-          "http://157.245.206.178:3000/api/absen/dashboard/stats",
+          "http://api.simagang.tech/api/absen/dashboard/stats",
           {
             headers: {
               Authorization: `Bearer ${localStorage.getItem("token")}`,

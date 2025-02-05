@@ -32,7 +32,7 @@ function FormRegister() {
   useEffect(() => {
     const fetchAdminUsers = async () => {
       try {
-        const response = await axios.get("http://157.245.206.178:3000/api/admin/users");
+        const response = await axios.get("http://api.simagang.tech/api/admin/users");
         if (response.data.success) {
           setAdminUsers(response.data.admins);
         }
@@ -98,7 +98,7 @@ function FormRegister() {
       delete registerData.konfirmasiPassword;
 
       const response = await axios.post(
-        "http://157.245.206.178:3000/api/auth/register",
+        "http://api.simagang.tech/api/auth/register",
         registerData
       );
 

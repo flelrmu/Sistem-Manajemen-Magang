@@ -25,7 +25,7 @@ function FilterInternship({ onFilterChange }) {
     const fetchInstitutions = async () => {
       try {
         const response = await axios.get(
-          "http://157.245.206.178:3000/api/admin/institutions"
+          "http://api.simagang.tech/api/admin/institutions"
         );
         setInstitutions(["Semua Institusi", ...response.data.institutions]);
       } catch (error) {

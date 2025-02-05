@@ -14,7 +14,7 @@ function UploadParaf() {
   useEffect(() => {
     const fetchParafData = async () => {
       try {
-        const response = await axios.get("http://157.245.206.178:3000/api/admin/profile");
+        const response = await axios.get("http://api.simagang.tech/api/admin/profile");
         if (response.data.success && response.data.data.paraf_image) {
           setParafUpload((prev) => ({
             ...prev,
@@ -61,7 +61,7 @@ function UploadParaf() {
     formData.append("paraf_image", parafUpload.selectedFile);
 
     try {
-      const response = await axios.put("http://157.245.206.178:3000/api/admin/paraf", formData, {
+      const response = await axios.put("http://api.simagang.tech/api/admin/paraf", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
         },

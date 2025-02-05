@@ -50,7 +50,7 @@ function ScanQr() {
           }),
         };
 
-        const response = await fetch("http://localhost:3000/api/absen/scan", {
+        const response = await fetch("http://api.simagang.tech/api/absen/scan", {
           method: "POST",
           headers: {
             Accept: "application/json",

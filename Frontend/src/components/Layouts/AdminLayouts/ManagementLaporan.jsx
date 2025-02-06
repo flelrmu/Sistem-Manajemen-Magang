@@ -33,7 +33,7 @@ function ManagementLaporan() {
       setExporting(true);
       
       const response = await axios({
-        url: 'http://api.simagang.tech/api/reports/export',
+        url: 'http://localhost:3000/api/reports/export',
         method: 'POST',
         responseType: 'blob',
         data: {

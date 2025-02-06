@@ -125,7 +125,7 @@ const LogbookUser = () => {
     try {
       setIsDownloading(true);
 
-      const response = await axios.get("http://api.simagang.tech/api/logbook/export", {
+      const response = await axios.get("http://localhost:3000/api/logbook/export", {
         responseType: "blob",
       });
 

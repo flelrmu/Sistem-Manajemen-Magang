@@ -70,7 +70,7 @@ function RiwayatAbsensi() {
     setExportLoading(true);
     try {
       const response = await axios.post(
-        "http://api.simagang.tech/api/absen/export-mahasiswa",
+        "http://localhost:3000/api/absen/export-mahasiswa",
         { selectedIds },
         {
           headers: {

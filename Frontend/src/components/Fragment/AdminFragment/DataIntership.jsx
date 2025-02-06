@@ -39,7 +39,7 @@ function DataInternship() {
       };
 
       const response = await axios.get(
-        `http://api.simagang.tech/api/admin/mahasiswa`,
+        `http://localhost:3000/api/admin/mahasiswa`,
         {
           params: queryParams,
           headers: {
@@ -79,7 +79,7 @@ function DataInternship() {
     if (!window.confirm("Apakah Anda yakin ingin menghapus data ini?")) return;
 
     try {
-      await axios.delete(`http://api.simagang.tech/api/admin/mahasiswa/${id}`, {
+      await axios.delete(`http://localhost:3000/api/admin/mahasiswa/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },

@@ -95,7 +95,7 @@ const UploadLaporan = ({ isOpen, onClose, onSuccess, onUploadComplete }) => {
     formPayload.append('file_laporan', formData.file);
 
     try {
-      await axios.post('http://api.simagang.tech/api/reports', formPayload, {
+      await axios.post('http://localhost:3000/api/reports', formPayload, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${localStorage.getItem('token')}`

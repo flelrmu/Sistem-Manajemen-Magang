@@ -15,7 +15,7 @@ function IzinUser() {
 
   const fetchPermissions = async () => {
     try {
-      const response = await axios.get('http://api.simagang.tech/api/izin/history', {
+      const response = await axios.get('http://localhost:3000/api/izin/history', {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }

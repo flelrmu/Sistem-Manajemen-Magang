@@ -1,9 +1,8 @@
 import React, { useState } from "react";
 import { Edit2 } from "lucide-react";
-import axios from 'axios';
 import ActivityModal from "./Activity";
 
-function LogbookData({ logbooks }) {
+function LogbookData({ logbooks = [] }) {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedLogbook, setSelectedLogbook] = useState(null);
   
@@ -12,90 +11,112 @@ function LogbookData({ logbooks }) {
     setIsEditModalOpen(true);
   };
 
-  const handleEditSubmit = async (formData) => {
-    try {
-      const response = await axios.put(`http://api.simagang.tech/api/logbook/${selectedLogbook.id}`, formData);
-      
-      if (response.data.success) {
-        setIsEditModalOpen(false);
-        // Reload halaman untuk mendapatkan data terbaru
-        window.location.reload();
-        alert('Logbook berhasil diupdate');
-      }
-    } catch (error) {
-      console.error('Error updating logbook:', error);
-      alert(error.response?.data?.message || 'Gagal mengupdate logbook');
-    }
-  };
-
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="overflow-x-auto">
-        <table className="min-w-full">
-          <thead>
-            <tr className="border-b">
-              <th className="text-left py-4 px-4">Tanggal</th>
-              <th className="text-left py-4 px-4">Aktivitas</th>
-              <th className="text-left py-4 px-4">Progress</th>
-              <th className="text-left py-4 px-4">Status</th>
-              <th className="text-left py-4 px-4">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logbooks?.map((item, index) => (
-              <tr key={item.id || index} className="border-b">
-                <td className="py-4 px-4">
-                  {new Date(item.tanggal).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'short',
-                    year: 'numeric'
-                  })}
-                </td>
-                <td className="py-4 px-4 max-w-md">
-                  {item.aktivitas}
-                  {item.catatan_admin && (
-                    <div className="text-sm text-red-600 mt-1">
-                      Catatan Admin: {item.catatan_admin}
-                    </div>
-                  )}
-                </td>
-                <td className="py-4 px-4">
-                  <div className="flex items-center gap-2">
-                    <div className="w-12 text-center">{item.progress}%</div>
-                  </div>
-                </td>
-                <td className="py-4 px-4">
-                  <span className={`px-3 py-1 rounded-full text-sm ${
-                    item.status === 'approved' 
-                      ? 'bg-green-100 text-green-800'
-                      : item.status === 'pending'
-                      ? 'bg-orange-100 text-orange-800'
-                      : 'bg-red-100 text-red-800'
-                  }`}>
-                    {item.status.charAt(0).toUpperCase() + item.status.slice(1)}
-                  </span>
-                </td>
-                <td className="py-4 px-4">
-                  {item.status === 'rejected' && (
-                    <button
-                      onClick={() => handleEdit(item)}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-colors"
-                      title="Edit Logbook"
-                    >
-                      <Edit2 size={20} />
-                    </button>
-                  )}
-                </td>
+    <div className="bg-white rounded-lg shadow">
+      <div className="p-6">
+        <h2 className="text-xl font-semibold mb-4">Riwayat Logbook</h2>
+        
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Tanggal
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aktivitas
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Progress
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                {logbooks.some(log => log.catatan_admin) && (
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Catatan Admin
+                  </th>
+                )}
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Aksi
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {logbooks.map((record, index) => (
+                <tr 
+                  key={record.id || index} 
+                  className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {new Date(record.tanggal).toLocaleDateString("id-ID", {
+                      day: "numeric",
+                      month: "short",
+                      year: "numeric",
+                    })}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500 max-w-md">
+                    {record.aktivitas}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <div className="flex items-center">   
+                      {record.progress}%
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span
+                      className={`inline-flex px-3 py-1 rounded-full text-sm font-medium
+                        ${record.status === "approved"
+                          ? "bg-green-100 text-green-800"
+                          : record.status === "pending"
+                          ? "bg-yellow-100 text-yellow-800"
+                          : "bg-red-100 text-red-800"
+                        }`}
+                    >
+                      {record.status === "approved"
+                        ? "Disetujui"
+                        : record.status === "pending"
+                        ? "Menunggu Review"
+                        : "Ditolak"}
+                    </span>
+                  </td>
+                  {logbooks.some(log => log.catatan_admin) && (
+                    <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                      {record.catatan_admin || '-'}
+                    </td>
+                  )}
+                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <div className="flex space-x-4">
+                      {record.status === "rejected" && (
+                        <button
+                          onClick={() => handleEdit(record)}
+                          className="text-blue-600 hover:text-blue-800 flex items-center"
+                          title="Edit Logbook"
+                        >
+                          <Edit2 className="h-5 w-5" />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {(!logbooks || logbooks.length === 0) && (
+            <div className="text-center py-8 text-gray-500">
+              Belum ada logbook yang dikumpulkan
+            </div>
+          )}
+        </div>
       </div>
 
       <ActivityModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        onSubmit={handleEditSubmit}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedLogbook(null);
+        }}
         initialData={selectedLogbook}
         isEdit={true}
       />

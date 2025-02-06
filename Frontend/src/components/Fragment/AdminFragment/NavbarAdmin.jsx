@@ -32,7 +32,7 @@ const NavbarAdmin = ({ type }) => {
       return user.photo_profile;
     }
     // Otherwise, construct the URL
-    return `${process.env.REACT_APP_API_URL || 'http://api.simagang.tech'}/uploads/profiles/${user.photo_profile}`;
+    return `${process.env.REACT_APP_API_URL || 'http://localhost:3000'}/uploads/profiles/${user.photo_profile}`;
   };
 
   return (

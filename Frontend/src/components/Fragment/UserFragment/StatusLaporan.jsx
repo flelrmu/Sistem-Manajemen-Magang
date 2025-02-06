@@ -19,7 +19,7 @@ function StatusLaporan() {
 
   const fetchProgress = async () => {
     try {
-      const response = await axios.get('http://api.simagang.tech/api/reports/progress');
+      const response = await axios.get('http://localhost:3000/api/reports/progress');
       setProgressData(response.data.data);
       setError('');
     } catch (error) {

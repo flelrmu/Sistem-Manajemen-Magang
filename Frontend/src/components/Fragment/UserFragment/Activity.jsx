@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 
 const ActivityModal = ({ isOpen, onClose, onSubmit, initialData, isEdit = false }) => {
   const [formData, setFormData] = useState({
-    tanggal: '',
+    tanggal: new Date().toISOString().split('T')[0],
     aktivitas: '',
     progress: '',
   });
@@ -16,12 +16,18 @@ const ActivityModal = ({ isOpen, onClose, onSubmit, initialData, isEdit = false 
   useEffect(() => {
     if (initialData && isEdit) {
       setFormData({
-        tanggal: initialData.tanggal,
+        tanggal: initialData.tanggal.split('T')[0],
         aktivitas: initialData.aktivitas,
         progress: initialData.progress.toString(),
       });
+    } else {
+      // Set default date to today when opening a new activity
+      setFormData(prev => ({
+        ...prev,
+        tanggal: new Date().toISOString().split('T')[0]
+      }));
     }
-  }, [initialData, isEdit]);
+  }, [initialData, isEdit, isOpen]);
 
   if (!isOpen) return null;
 
@@ -89,7 +95,7 @@ const ActivityModal = ({ isOpen, onClose, onSubmit, initialData, isEdit = false 
 
   const handleClose = () => {
     setFormData({
-      tanggal: '',
+      tanggal: new Date().toISOString().split('T')[0],
       aktivitas: '',
       progress: '',
     });
@@ -107,7 +113,7 @@ const ActivityModal = ({ isOpen, onClose, onSubmit, initialData, isEdit = false 
         if (e.target === e.currentTarget) handleClose();
       }}
     >
-      <div className="bg-white rounded-lg w-full max-w-2xl mx-4" onClick={e => e.stopPropagation()}>
+      <div className="bg-white rounded-lg w-full max-w-2xl mx-4">
         <div className="p-6">
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold">{isEdit ? 'Edit Aktivitas' : 'Tambah Aktivitas'}</h2>
@@ -141,7 +147,7 @@ const ActivityModal = ({ isOpen, onClose, onSubmit, initialData, isEdit = false 
                 value={formData.aktivitas}
                 onChange={handleInputChange}
                 placeholder="Masukkan deskripsi aktivitas..."
-                className={`w-full border rounded-lg p-3 h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                className={`w-full px-3 py-2 border rounded-lg h-32 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.aktivitas ? 'border-red-500' : ''
                 }`}
                 required
@@ -161,7 +167,7 @@ const ActivityModal = ({ isOpen, onClose, onSubmit, initialData, isEdit = false 
                 min="0"
                 max="100"
                 placeholder="Masukkan progress (0-100)"
-                className={`w-full border rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                   errors.progress ? 'border-red-500' : ''
                 }`}
                 required

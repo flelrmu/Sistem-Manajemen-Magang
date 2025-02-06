@@ -12,7 +12,7 @@ function InfoUser() {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("token"); // Assuming token is stored in localStorage
-        const response = await axios.get("http://api.simagang.tech/api/user/profile", {
+        const response = await axios.get("http://localhost:3000/api/user/profile", {
           headers: {
             Authorization: `Bearer ${token}`
           }

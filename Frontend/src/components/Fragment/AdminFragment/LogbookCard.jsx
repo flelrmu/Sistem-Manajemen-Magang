@@ -15,7 +15,7 @@ function LogbookCard({ refreshTrigger = 0 }) {
 
   const fetchLogbookStats = async () => {
     try {
-      const response = await axios.get('http://api.simagang.tech/api/logbook');
+      const response = await axios.get('http://localhost:3000/api/logbook');
       if (response.data.success && response.data.data) {
         const logbooks = response.data.data;
         setStats({

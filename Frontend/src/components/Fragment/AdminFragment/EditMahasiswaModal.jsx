@@ -46,7 +46,7 @@ const EditMahasiswaModal = ({ isOpen, onClose, mahasiswaData }) => {
     setError('');
 
     try {
-      await axios.put(`http://api.simagang.tech/api/admin/mahasiswa/${mahasiswaData.id}`, formData, {
+      await axios.put(`http://localhost:3000/api/admin/mahasiswa/${mahasiswaData.id}`, formData, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`
         }

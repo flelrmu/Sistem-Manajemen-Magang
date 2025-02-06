@@ -107,7 +107,7 @@ function DataAbsensi() {
     setExportLoading(true);
     try {
       const response = await axios.post(
-        "http://api.simagang.tech/api/absen/export-admin",
+        "http://localhost:3000/api/absen/export-admin",
         { selectedIds },
         {
           headers: {

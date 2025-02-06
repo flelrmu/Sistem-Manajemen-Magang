@@ -17,7 +17,7 @@ function QrUser() {
       
       // Fetch attendance data
       const attendanceResponse = await axios.get(
-        "http://api.simagang.tech/api/absen/absensi", 
+        "http://localhost:3000/api/absen/absensi", 
         {
           params: { page: 1, limit: 1 },
           headers: { Authorization: `Bearer ${token}` }
@@ -44,7 +44,7 @@ function QrUser() {
 
       // Fetch QR code
       const qrResponse = await axios.get(
-        "http://api.simagang.tech/api/user/profileQr",
+        "http://localhost:3000/api/user/profileQr",
         {
           headers: { Authorization: `Bearer ${token}` }
         }

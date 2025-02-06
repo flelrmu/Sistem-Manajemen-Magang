@@ -53,7 +53,7 @@ const DashboardGrafik = () => {
         setIsAnimating(true);
         const token = localStorage.getItem("token");
         const response = await fetch(
-          "http://api.simagang.tech/api/logbook/stats",
+          "http://localhost:3000/api/logbook/stats",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -88,7 +88,7 @@ const DashboardGrafik = () => {
         const lastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
         const response = await axios.get(
-          "http://api.simagang.tech/api/absen/statistics",
+          "http://localhost:3000/api/absen/statistics",
           {
             params: {
               startDate: lastWeek.toISOString().split("T")[0],

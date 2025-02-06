@@ -63,6 +63,7 @@ const handleMulterError = (err, req, res, next) => {
 
 // Public route for getting admin users list (used in registration)
 router.get('/users', adminController.getAdminUsers);
+router.get('/institutions', adminController.getInstitutions);
 
 // Protect all routes below this point
 router.use(auth.verifyToken);
@@ -107,6 +108,12 @@ router.get('/profile',
   auth.verifyToken,
   auth.isAdmin,
   adminController.getProfile
+);
+
+router.post('/institutions', 
+  auth.verifyToken,
+  auth.isAdmin,
+  adminController.addInstitution
 );
 
 

@@ -2,13 +2,15 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { HiOutlineMail } from "react-icons/hi";
 import { LuLockKeyhole } from "react-icons/lu";
-import { useAuth } from "../Context/UserContext"; // Import useAuth
+import { HiEye, HiEyeOff } from "react-icons/hi";
+import { useAuth } from "../Context/UserContext";
 
 const FormLogin = () => {
   const navigate = useNavigate();
-  const { login } = useAuth(); // Use login from context
+  const { login } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -29,7 +31,6 @@ const FormLogin = () => {
       setLoading(true);
       await login(formData.email, formData.password);
       
-      // Get user data after successful login
       const userData = JSON.parse(localStorage.getItem('user'));
       if (userData.role === 'admin') {
         navigate('/dashboard');
@@ -72,14 +73,25 @@ const FormLogin = () => {
             <LuLockKeyhole className="h-5 w-5 text-gray-400" />
           </div>
           <input
-            type="password"
+            type={showPassword ? "text" : "password"}
             name="password"
             placeholder="Password"
-            className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500"
+            className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-red-500"
             value={formData.password}
             onChange={handleChange}
             required
           />
+          <button
+            type="button"
+            className="absolute inset-y-0 right-3 flex items-center"
+            onClick={() => setShowPassword(!showPassword)}
+          >
+            {showPassword ? (
+              <HiEyeOff className="h-5 w-5 text-gray-400" />
+            ) : (
+              <HiEye className="h-5 w-5 text-gray-400" />
+            )}
+          </button>
         </div>
 
         <div className="flex flex-col gap-4">

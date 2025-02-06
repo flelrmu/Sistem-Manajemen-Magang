@@ -25,7 +25,7 @@ function ManagementLogbook() {
       setIsLoading(true);
       setError(null);
       
-      const response = await axios.get('http://api.simagang.tech/api/logbook', { 
+      const response = await axios.get('http://localhost:3000/api/logbook', { 
         params: filterParams 
       });
       
@@ -56,7 +56,7 @@ function ManagementLogbook() {
       setIsDownloading(true);
       
       const response = await axios.get(
-        `http://api.simagang.tech/api/logbook/export/${selectedUser.id}`, 
+        `http://localhost:3000/api/logbook/export/${selectedUser.id}`, 
         { responseType: 'blob' }
       );
 
@@ -97,7 +97,7 @@ function ManagementLogbook() {
       });
 
       if (result.isConfirmed) {
-        const response = await axios.put(`http://api.simagang.tech/api/logbook/${logbookId}/status`, {
+        const response = await axios.put(`http://localhost:3000/api/logbook/${logbookId}/status`, {
           status: 'approved'
         });
 
@@ -126,7 +126,7 @@ function ManagementLogbook() {
   
   const handleRejectLogbook = async (logbookId, catatanAdmin) => {
     try {
-      const response = await axios.put(`http://api.simagang.tech/api/logbook/${logbookId}/status`, {
+      const response = await axios.put(`http://localhost:3000/api/logbook/${logbookId}/status`, {
         status: 'rejected',
         catatan_admin: catatanAdmin
       });

@@ -5,10 +5,11 @@ import Swal from 'sweetalert2';
 import Button from "../Elements/Button/Button";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-import axios from "axios";
+import { useAuth } from "../context/UserContext";
 
 function FormRegister() {
   const navigate = useNavigate();
+  const { register, fetchAdminUsers } = useAuth();
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState(null);
   const [endDate, setEndDate] = useState(null);
@@ -30,30 +31,26 @@ function FormRegister() {
   });
 
   useEffect(() => {
-    const fetchAdminUsers = async () => {
+    const loadAdminUsers = async () => {
       try {
-        const response = await axios.get("http://api.simagang.tech/api/admin/users");
-        if (response.data.success) {
-          setAdminUsers(response.data.admins);
-        }
+        const admins = await fetchAdminUsers();
+        setAdminUsers(admins);
       } catch (err) {
-        console.error("Error fetching admin users:", err);
         Swal.fire({
           title: 'Error!',
-          text: 'Gagal memuat daftar admin',
+          text: err.message,
           icon: 'error',
           confirmButtonColor: '#EF4444'
         });
       }
     };
 
-    fetchAdminUsers();
-  }, []);
+    loadAdminUsers();
+  }, [fetchAdminUsers]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validasi password
     if (formData.password !== formData.konfirmasiPassword) {
       await Swal.fire({
         title: 'Error!',
@@ -64,7 +61,6 @@ function FormRegister() {
       return;
     }
 
-    // Validasi tanggal
     if (!startDate || !endDate) {
       await Swal.fire({
         title: 'Error!',
@@ -75,7 +71,6 @@ function FormRegister() {
       return;
     }
 
-    // Validasi admin
     if (!formData.admin_id) {
       await Swal.fire({
         title: 'Error!',
@@ -88,34 +83,21 @@ function FormRegister() {
 
     try {
       setLoading(true);
-
       const registerData = {
         ...formData,
         tanggal_mulai: startDate.toISOString().split("T")[0],
         tanggal_selesai: endDate.toISOString().split("T")[0],
       };
-
       delete registerData.konfirmasiPassword;
 
-      const response = await axios.post(
-        "http://api.simagang.tech/api/auth/register",
-        registerData
-      );
-
-      if (response.data.success) {
-        await Swal.fire({
-          title: 'Berhasil!',
-          text: 'Registrasi berhasil. Silakan login menggunakan akun Anda.',
-          icon: 'success',
-          confirmButtonColor: '#10B981'
-        });
+      const response = await register(registerData);
+      if (response) {
         navigate("/login");
       }
     } catch (err) {
-      console.error('Registration error:', err);
       await Swal.fire({
         title: 'Gagal!',
-        text: err.response?.data?.message || 'Terjadi kesalahan saat registrasi',
+        text: err.message,
         icon: 'error',
         confirmButtonColor: '#EF4444'
       });

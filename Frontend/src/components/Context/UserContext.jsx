@@ -1,12 +1,46 @@
 import React, { createContext, useState, useContext, useEffect } from "react";
 import axios from "axios";
+import Swal from 'sweetalert2';
 
 const UserContext = createContext(null);
-const API_URL = "http://api.simagang.tech";
+const API_URL = "http://localhost:3000";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const register = async (registerData) => {
+    try {
+      const response = await axios.post(`${API_URL}/api/auth/register`, registerData);
+      
+      if (response.data) {
+        await Swal.fire({
+          title: 'Berhasil!',
+          text: 'Registrasi berhasil. Silakan login menggunakan akun Anda.',
+          icon: 'success',
+          confirmButtonColor: '#10B981'
+        });
+        return response.data;
+      }
+      throw new Error(response.data?.message || 'Registrasi gagal');
+    } catch (err) {
+      console.error('Registration error:', err);
+      throw err.response?.data || { message: 'Terjadi kesalahan saat registrasi' };
+    }
+  };
+
+  const fetchAdminUsers = async () => {
+    try {
+      const response = await axios.get(`${API_URL}/api/admin/users`);
+      if (response.data.success) {
+        return response.data.admins;
+      }
+      throw new Error('Failed to fetch admin users');
+    } catch (err) {
+      console.error("Error fetching admin users:", err);
+      throw err.response?.data || { message: 'Gagal memuat daftar admin' };
+    }
+  };
 
   const refreshProfile = async () => {
     try {
@@ -22,13 +56,11 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         const userData = response.data.data.profile || response.data.data;
-        // Ensure photo_profile URL is correctly formatted
         if (userData.photo_profile) {
           const fileName = userData.photo_profile.split('/').pop();
           userData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
         }
         
-        // Preserve role information
         userData.role = user?.role || userData.role;
         
         localStorage.setItem("user", JSON.stringify(userData));
@@ -50,12 +82,9 @@ export const AuthProvider = ({ children }) => {
   
       if (loginResponse.data.success) {
         const { token } = loginResponse.data;
-        
-        // Set token first
         localStorage.setItem("token", token);
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
   
-        // Immediately fetch complete profile data
         const endpoint = loginResponse.data.user.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
         const profileResponse = await axios.get(`${API_URL}${endpoint}`, {
           headers: {
@@ -69,13 +98,11 @@ export const AuthProvider = ({ children }) => {
             role: loginResponse.data.user.role
           };
   
-          // Process photo_profile URL
           if (completeUserData.photo_profile) {
             const fileName = completeUserData.photo_profile.split('/').pop();
             completeUserData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
           }
   
-          // Update state first, then localStorage
           setUser(completeUserData);
           localStorage.setItem("user", JSON.stringify(completeUserData));
           return { success: true, user: completeUserData };
@@ -113,7 +140,6 @@ export const AuthProvider = ({ children }) => {
           updatedUser.photo_profile = `${API_URL}/uploads/profiles/${updatedUser.photo_profile}`;
         }
 
-        // Update state first, then localStorage
         setUser(updatedUser);
         localStorage.setItem("user", JSON.stringify(updatedUser));
         return response.data;
@@ -131,8 +157,7 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem("token");
       if (!token) throw new Error("Token not found");
 
-      const role = user?.role;
-      const endpoint = role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
+      const endpoint = user?.role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
       
       const response = await axios.put(`${API_URL}${endpoint}`, passwordData, {
         headers: {
@@ -146,8 +171,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-
-
   const logout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
@@ -155,7 +178,6 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
-  // Initialize auth state
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -164,19 +186,14 @@ export const AuthProvider = ({ children }) => {
         const savedUser = localStorage.getItem("user");
 
         if (token && savedUser) {
-          // Set axios default header
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-          
-          // Parse and set initial user state
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
-
-          // Refresh profile in background
           await refreshProfile();
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
-        logout(); // Clear invalid auth state
+        logout();
       } finally {
         setLoading(false);
       }
@@ -185,7 +202,6 @@ export const AuthProvider = ({ children }) => {
     initializeAuth();
   }, []);
 
-  // Set up axios response interceptor for 401 errors
   useEffect(() => {
     const interceptor = axios.interceptors.response.use(
       response => response,
@@ -209,7 +225,9 @@ export const AuthProvider = ({ children }) => {
     logout,
     updateProfile,
     updatePassword,
-    refreshProfile
+    refreshProfile,
+    register,
+    fetchAdminUsers
   };
 
   return (

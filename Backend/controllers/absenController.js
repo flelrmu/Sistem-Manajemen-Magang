@@ -6,15 +6,12 @@ const path = require("path");
 const fs = require("fs");
 
 const absenController = {
-  // Scan QR Code untuk absensi
-  // Add new endpoint for public scan
-  scanQR: async (req, res) => {
+   scanQR: async (req, res) => {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
-
       const { qrData, latitude, longitude, deviceInfo } = req.body;
-
+  
       // Validate QR code
       const validationResult = qrcodeUtil.validateQRContent(qrData);
       if (!validationResult.isValid) {
@@ -23,36 +20,36 @@ const absenController = {
           message: validationResult.message,
         });
       }
-
+  
       const mahasiswa_id = validationResult.data.mahasiswa_id;
-
+  
       // Get mahasiswa data
       const [mahasiswa] = await connection.execute(
         'SELECT * FROM mahasiswa WHERE id = ? AND status = "aktif"',
         [mahasiswa_id]
       );
-
+  
       if (mahasiswa.length === 0) {
         return res.status(404).json({
           success: false,
           message: "Mahasiswa tidak ditemukan atau tidak aktif",
         });
       }
-
+  
       // Get active setting
       const [settings] = await connection.execute(
         "SELECT * FROM setting_absensi WHERE is_active = true"
       );
-
+  
       if (settings.length === 0) {
         return res.status(400).json({
           success: false,
           message: "Pengaturan absensi belum dikonfigurasi",
         });
       }
-
+  
       const setting = settings[0];
-
+  
       // Check if within radius
       const distance = geolib.getDistance(
         { latitude, longitude },
@@ -61,43 +58,43 @@ const absenController = {
           longitude: setting.longitude_pusat,
         }
       );
-
+  
       const dalamRadius = distance <= setting.radius_meter;
-
+  
       // Get current time
       const now = new Date();
       const currentTime = now.toTimeString().split(" ")[0];
       const currentDate = now.toISOString().split("T")[0];
-
+  
       // Check if already checked in today
       const [existingAbsensi] = await connection.execute(
         "SELECT * FROM absensi WHERE mahasiswa_id = ? AND DATE(tanggal) = ?",
         [mahasiswa_id, currentDate]
       );
-
-      // Determine status
-      let statusMasuk = "tepat_waktu";
-      if (currentTime > setting.jam_masuk) {
-        const timeDiff =
-          (new Date(`2000/01/01 ${currentTime}`) -
-            new Date(`2000/01/01 ${setting.jam_masuk}`)) /
-          1000 /
-          60;
-
-        if (timeDiff > setting.batas_telat_menit) {
-          statusMasuk = "telat";
-        }
-      }
-
+  
       if (existingAbsensi.length === 0) {
-        // Create new attendance record
+        // Determine status for new check-in
+        let statusMasuk = "tepat_waktu";
+        if (currentTime > setting.jam_masuk) {
+          const timeDiff =
+            (new Date(`2000/01/01 ${currentTime}`) -
+              new Date(`2000/01/01 ${setting.jam_masuk}`)) /
+            1000 /
+            60;
+  
+          if (timeDiff > setting.batas_telat_menit) {
+            statusMasuk = "telat";
+          }
+        }
+  
+        // Create new attendance record for check-in
         await connection.execute(
           `INSERT INTO absensi (
-          mahasiswa_id, setting_absensi_id, tanggal,
-          waktu_masuk, status_masuk, status_kehadiran,
-          latitude_scan, longitude_scan, dalam_radius,
-          device_info
-        ) VALUES (?, ?, ?, NOW(), ?, 'hadir', ?, ?, ?, ?)`,
+            mahasiswa_id, setting_absensi_id, tanggal,
+            waktu_masuk, status_masuk, status_kehadiran,
+            latitude_scan, longitude_scan, dalam_radius,
+            device_info
+          ) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, 'hadir', ?, ?, ?, ?)`,
           [
             mahasiswa_id,
             setting.id,
@@ -109,13 +106,14 @@ const absenController = {
             deviceInfo,
           ]
         );
-
+  
         await connection.commit();
-
+        
         return res.json({
           success: true,
           message: "Absen masuk berhasil",
           data: {
+            type: "masuk",
             status: statusMasuk,
             dalam_radius: dalamRadius,
             nama: mahasiswa[0].nama,
@@ -130,21 +128,27 @@ const absenController = {
             message: "Belum waktunya pulang",
           });
         }
-
-        // Update existing record with check out time
+  
+        // Update only waktu_keluar for check-out
         await connection.execute(
-          "UPDATE absensi SET waktu_keluar = NOW() WHERE id = ?",
+          `UPDATE absensi 
+           SET waktu_keluar = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP 
+           WHERE id = ? 
+           AND waktu_keluar IS NULL`,
           [existingAbsensi[0].id]
         );
-
+  
         await connection.commit();
-
+        
         return res.json({
           success: true,
           message: "Absen pulang berhasil",
           data: {
+            type: "pulang",
             nama: mahasiswa[0].nama,
             waktu: currentTime,
+            dalam_radius: dalamRadius
           },
         });
       }

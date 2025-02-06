@@ -47,7 +47,7 @@ function DataAbsensi() {
       }
   
       const response = await axios.get(
-        "http://api.simagang.tech/api/absen/riwayat",
+        "http://localhost:3000/api/absen/riwayat",
         {
           params,
           headers: {

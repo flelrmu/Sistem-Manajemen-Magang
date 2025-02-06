@@ -20,7 +20,7 @@ function RiwayatAbsensi() {
       setError(null);
 
       const response = await axios.get(
-        "http://api.simagang.tech/api/absen/absensi",
+        "http://localhost:3000/api/absen/absensi",
         {
           params: {
             page,

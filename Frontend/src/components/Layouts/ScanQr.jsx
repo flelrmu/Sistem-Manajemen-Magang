@@ -2,12 +2,11 @@ import React, { useState } from "react";
 import QrScanner from "react-qr-scanner";
 import { useNavigate } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
-import Swal from 'sweetalert2';
+import Swal from "sweetalert2";
 import Background from "../Elements/Items/bg";
 import Logo from "../Elements/Logo/Logo";
 
 function ScanQr() {
-  const [scanResult, setScanResult] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -16,32 +15,16 @@ function ScanQr() {
       setIsLoading(true);
 
       try {
-        // Parse QR data
-        let qrContent;
-        try {
-          qrContent = data.text;
-        } catch (e) {
-          console.error("QR Parse error:", e);
-          throw new Error("Format QR Code tidak valid");
-        }
-
-        // Get location
-        let position;
-        try {
-          position = await new Promise((resolve, reject) => {
-            navigator.geolocation.getCurrentPosition(resolve, reject, {
-              enableHighAccuracy: true,
-              timeout: 5000,
-              maximumAge: 0,
-            });
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0,
           });
-        } catch (e) {
-          console.error("Location error:", e);
-          throw new Error("Gagal mendapatkan lokasi. Pastikan GPS aktif.");
-        }
+        });
 
         const requestData = {
-          qrData: qrContent,
+          qrData: data.text,
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           deviceInfo: JSON.stringify({
@@ -50,11 +33,12 @@ function ScanQr() {
           }),
         };
 
-        const response = await fetch("http://api.simagang.tech/api/absen/scan", {
+        const response = await fetch("http://localhost:3000/api/absen/scan", {
           method: "POST",
           headers: {
-            Accept: "application/json",
+            "Accept": "application/json",
             "Content-Type": "application/json",
+            "Authorization": `Bearer ${localStorage.getItem("token")}`
           },
           body: JSON.stringify(requestData),
         });
@@ -67,65 +51,28 @@ function ScanQr() {
         const result = await response.json();
 
         if (result.success) {
-          setScanResult(result);
+          const alertContent = createAlertContent(result.data);
+          
           await Swal.fire({
-            title: '<div class="text-2xl font-bold mb-4">Absensi Berhasil! 🎉</div>',
-            html: `
-              <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
-                <div class="space-y-3">
-                  <div class="flex items-center border-b border-gray-200 pb-3">
-                    <div class="w-24 text-gray-600">Nama</div>
-                    <div class="flex-1 font-medium">${result.data.nama}</div>
-                  </div>
-                  <div class="flex items-center border-b border-gray-200 pb-3">
-                    <div class="w-24 text-gray-600">Waktu</div>
-                    <div class="flex-1 font-medium">${result.data.waktu}</div>
-                  </div>
-                  <div class="flex items-center border-b border-gray-200 pb-3">
-                    <div class="w-24 text-gray-600">Status</div>
-                    <div class="flex-1">
-                      <span class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                        ${result.data.status}
-                      </span>
-                    </div>
-                  </div>
-                  ${result.data.dalam_radius !== undefined ? `
-                    <div class="flex items-center">
-                      <div class="w-24 text-gray-600">Lokasi</div>
-                      <div class="flex-1">
-                        <span class="px-3 py-1 ${result.data.dalam_radius ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'} rounded-full text-sm font-medium">
-                          ${result.data.dalam_radius ? 'Dalam radius' : 'Di luar radius'}
-                        </span>
-                      </div>
-                    </div>
-                  ` : ''}
-                </div>
-              </div>
-            `,
-            icon: 'success',
+            title: `<div class="text-2xl font-bold mb-4">Absensi ${
+              result.data.type === "masuk" ? "Masuk" : "Pulang"
+            } Berhasil! 🎉</div>`,
+            html: alertContent,
+            icon: "success",
             showConfirmButton: true,
-            confirmButtonText: 'Selesai',
-            confirmButtonColor: '#10B981',
+            confirmButtonText: "Selesai",
+            confirmButtonColor: "#10B981",
             allowOutsideClick: false,
-            customClass: {
-              popup: 'swal2-show',
-              container: 'swal2-container',
-              title: 'text-2xl font-bold mb-4'
-            }
-          }).then((result) => {
-            if (result.isConfirmed) {
-              handleDismiss();
-            }
           });
-        } else {
-          throw new Error(result.message || "Gagal memproses absensi");
+
+          window.location.reload();
         }
       } catch (error) {
         await Swal.fire({
-          title: 'Gagal!',
+          title: "Gagal!",
           text: error.message,
-          icon: 'error',
-          confirmButtonColor: '#EF4444'
+          icon: "error",
+          confirmButtonColor: "#EF4444",
         });
       } finally {
         setIsLoading(false);
@@ -133,32 +80,62 @@ function ScanQr() {
     }
   };
 
+  const createAlertContent = (data) => {
+    const commonContent = `
+      <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
+        <div class="space-y-3">
+          <div class="flex items-center border-b border-gray-200 pb-3">
+            <div class="w-24 text-gray-600">Nama</div>
+            <div class="flex-1 font-medium">${data.nama}</div>
+          </div>
+          <div class="flex items-center border-b border-gray-200 pb-3">
+            <div class="w-24 text-gray-600">Waktu</div>
+            <div class="flex-1 font-medium">${data.waktu}</div>
+          </div>
+    `;
+
+    const statusContent = data.type === "masuk" ? `
+      <div class="flex items-center border-b border-gray-200 pb-3">
+        <div class="w-24 text-gray-600">Status</div>
+        <div class="flex-1">
+          <span class="px-3 py-1 ${
+            data.status === "tepat_waktu"
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          } rounded-full text-sm font-medium">
+            ${data.status === "tepat_waktu" ? "Tepat Waktu" : "Telat"}
+          </span>
+        </div>
+      </div>
+    ` : "";
+
+    return `
+      ${commonContent}
+      ${statusContent}
+      <div class="flex items-center">
+        <div class="w-24 text-gray-600">Lokasi</div>
+        <div class="flex-1">
+          <span class="px-3 py-1 ${
+            data.dalam_radius
+              ? "bg-green-100 text-green-800"
+              : "bg-red-100 text-red-800"
+          } rounded-full text-sm font-medium">
+            ${data.dalam_radius ? "Dalam radius" : "Di luar radius"}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>`;
+  };
+
   const handleError = async (err) => {
     console.error("Camera error:", err);
     await Swal.fire({
-      title: 'Error!',
-      text: 'Gagal mengakses kamera. Pastikan kamera dalam keadaan aktif.',
-      icon: 'error',
-      confirmButtonColor: '#EF4444'
+      title: "Error!",
+      text: "Gagal mengakses kamera. Pastikan kamera dalam keadaan aktif.",
+      icon: "error",
+      confirmButtonColor: "#EF4444",
     });
-  };
-
-  const handleDismiss = () => {
-    setScanResult(null);
-    window.location.reload();
-  };
-
-  const scannerSize = 280;
-
-  const previewStyle = {
-    height: scannerSize,
-    width: scannerSize,
-    objectFit: "cover",
-  };
-
-  const containerStyle = {
-    height: scannerSize + 40,
-    width: scannerSize + 40,
   };
 
   return (
@@ -172,36 +149,23 @@ function ScanQr() {
                 Scan QR Code Absensi
               </h2>
 
-              {!scanResult && !isLoading && (
+              {!isLoading && (
                 <div className="relative mb-8 flex items-center justify-center">
-                  <div className="relative" style={containerStyle}>
+                  <div className="relative h-80 w-80">
                     <div className="absolute inset-5">
                       <QrScanner
                         delay={300}
-                        style={previewStyle}
+                        style={{
+                          height: 280,
+                          width: 280,
+                          objectFit: "cover",
+                        }}
                         onError={handleError}
                         onScan={handleScan}
                         className="rounded-lg"
                       />
                     </div>
-                    <div className="absolute inset-0">
-                      <div className="absolute top-0 left-0 w-10 h-10">
-                        <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
-                        <div className="absolute top-0 left-0 w-2 h-full bg-red-500"></div>
-                      </div>
-                      <div className="absolute top-0 right-0 w-10 h-10">
-                        <div className="absolute top-0 right-0 w-full h-2 bg-red-500"></div>
-                        <div className="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
-                      </div>
-                      <div className="absolute bottom-0 left-0 w-10 h-10">
-                        <div className="absolute bottom-0 left-0 w-full h-2 bg-red-500"></div>
-                        <div className="absolute bottom-0 left-0 w-2 h-full bg-red-500"></div>
-                      </div>
-                      <div className="absolute bottom-0 right-0 w-10 h-10">
-                        <div className="absolute bottom-0 right-0 w-full h-2 bg-red-500"></div>
-                        <div className="absolute bottom-0 right-0 w-2 h-full bg-red-500"></div>
-                      </div>
-                    </div>
+                    <QRCorners />
                   </div>
                 </div>
               )}
@@ -213,7 +177,7 @@ function ScanQr() {
               )}
 
               <div className="text-center space-y-4">
-                {!scanResult && !isLoading && (
+                {!isLoading && (
                   <button
                     className="px-6 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
                     onClick={() => navigate("/")}
@@ -230,5 +194,26 @@ function ScanQr() {
     </div>
   );
 }
+
+const QRCorners = () => (
+  <div className="absolute inset-0">
+    <div className="absolute top-0 left-0 w-10 h-10">
+      <div className="absolute top-0 left-0 w-full h-2 bg-red-500"></div>
+      <div className="absolute top-0 left-0 w-2 h-full bg-red-500"></div>
+    </div>
+    <div className="absolute top-0 right-0 w-10 h-10">
+      <div className="absolute top-0 right-0 w-full h-2 bg-red-500"></div>
+      <div className="absolute top-0 right-0 w-2 h-full bg-red-500"></div>
+    </div>
+    <div className="absolute bottom-0 left-0 w-10 h-10">
+      <div className="absolute bottom-0 left-0 w-full h-2 bg-red-500"></div>
+      <div className="absolute bottom-0 left-0 w-2 h-full bg-red-500"></div>
+    </div>
+    <div className="absolute bottom-0 right-0 w-10 h-10">
+      <div className="absolute bottom-0 right-0 w-full h-2 bg-red-500"></div>
+      <div className="absolute bottom-0 right-0 w-2 h-full bg-red-500"></div>
+    </div>
+  </div>
+);
 
 export default ScanQr;

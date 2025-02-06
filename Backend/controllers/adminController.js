@@ -504,29 +504,76 @@ const adminController = {
 
   // Add this new method to adminController
   getInstitutions: async (req, res) => {
+    const connection = await db.getConnection();
     try {
-      const adminId = req.user.id;
-
-      // Get unique institutions from mahasiswa table for this admin
-      const [institutions] = await db.execute(
+      // Get unique institutions from mahasiswa table
+      const [institutions] = await connection.execute(
         `SELECT DISTINCT institusi 
          FROM mahasiswa 
-         WHERE admin_id = ? 
-         AND institusi IS NOT NULL 
-         ORDER BY institusi`,
-        [adminId]
+         WHERE institusi IS NOT NULL 
+         AND institusi != ''
+         ORDER BY institusi`
       );
+
+      // Transform hasil query menjadi array of strings
+      const institutionList = institutions
+        .map(row => row.institusi)
+        .filter(Boolean); // Remove any null/empty values
 
       res.json({
         success: true,
-        institutions: institutions.map((row) => row.institusi),
+        institutions: institutionList
       });
+      
     } catch (error) {
-      console.error("Get institutions error:", error);
+      console.error('Get institutions error:', error);
       res.status(500).json({
         success: false,
-        message: "Terjadi kesalahan saat mengambil data institusi",
+        message: 'Terjadi kesalahan saat mengambil data institusi'
       });
+    } finally {
+      connection.release();
+    }
+  },
+
+  addInstitution: async (req, res) => {
+    const connection = await db.getConnection();
+    try {
+      const { name } = req.body;
+
+      if (!name) {
+        return res.status(400).json({
+          success: false,
+          message: 'Nama institusi harus diisi'
+        });
+      }
+
+      // Check if institution already exists
+      const [existing] = await connection.execute(
+        'SELECT institusi FROM mahasiswa WHERE institusi = ? LIMIT 1',
+        [name]
+      );
+
+      if (existing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'Institusi sudah ada'
+        });
+      }
+
+      res.json({
+        success: true,
+        message: 'Institusi berhasil ditambahkan'
+      });
+
+    } catch (error) {
+      console.error('Add institution error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Terjadi kesalahan saat menambah institusi'
+      });
+    } finally {
+      connection.release();
     }
   },
 

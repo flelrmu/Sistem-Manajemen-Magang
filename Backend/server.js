@@ -80,6 +80,7 @@ app.use('/api/logbook', logbookRoutes);
 app.use('/api/reports', reportRoutes); // Changed from report to reports
 app.use('/api/reports', require('./routes/reportRoutes'));
 app.use('/api/izin', permissionRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Root route
 app.get('/', (req, res) => {

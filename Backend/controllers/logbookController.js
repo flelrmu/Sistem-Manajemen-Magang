@@ -446,7 +446,7 @@ const logbookController = {
 
   // Download PDF Logbook
   downloadLogbook: async (req, res) => {
-    let connection = await db.getConnection();
+    const connection = await db.getConnection();
     try {
       let userId = req.user.mahasiswa_id || req.user.admin_id;
       let userRole = req.user.role;
@@ -456,7 +456,7 @@ const logbookController = {
         mahasiswaId = userId;
       }
 
-      // Get mahasiswa and admin info with correct path join for paraf image
+      // Get mahasiswa and admin info with JOIN
       let [userInfo] = await connection.execute(
         `SELECT 
           m.nama as mahasiswa_nama,
@@ -474,16 +474,12 @@ const logbookController = {
         throw new Error("Data mahasiswa tidak ditemukan");
       }
 
-      // Convert paraf_image Buffer to string if it exists
-      if (userInfo[0].paraf_image) {
-        userInfo[0].paraf_image = userInfo[0].paraf_image.toString("utf8");
-        console.log("Paraf image path:", userInfo[0].paraf_image);
-      }
-
+      // Get logbooks data with formatted dates
       let [logbooks] = await connection.execute(
         `SELECT 
           l.*,
           DATE_FORMAT(l.tanggal, '%d/%m/%Y') as tanggal_formatted,
+          TIME_FORMAT(l.created_at, '%H:%i') as waktu_formatted,
           CASE 
             WHEN l.status = 'pending' THEN 'Menunggu'
             WHEN l.status = 'approved' THEN 'Disetujui'
@@ -500,37 +496,84 @@ const logbookController = {
       }
 
       // Create PDF
-      let doc = new PDFDocument({
+      const doc = new PDFDocument({
         margin: 50,
         size: "A4",
+        bufferPages: true
       });
 
-      // Set headers
+      // Handle document errors
+      doc.on('error', (err) => {
+        console.error('PDF generation error:', err);
+        throw err;
+      });
+
+      // Set response headers
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader(
         "Content-Disposition",
         `attachment; filename=logbook_${userInfo[0].nim}.pdf`
       );
 
-      doc.pipe(res);
+      // Pipe the PDF document to the response
+      const stream = doc.pipe(res);
 
-      // Add header and title
+      // Handle stream errors
+      stream.on('error', (err) => {
+        console.error('Stream error:', err);
+        if (!res.headersSent) {
+          res.status(500).json({
+            success: false,
+            message: "Error generating PDF"
+          });
+        }
+      });
+
+      // Page header creation function
+      const createHeader = () => {
+        const logoPath = path.join(__dirname, "../uploads/assets");
+        const semenPadangLogo = path.join(logoPath, "semen-padang-logo.png");
+        const sigLogo = path.join(logoPath, "sig-logo.png");
+
+        if (fs.existsSync(semenPadangLogo)) {
+          doc.image(semenPadangLogo, 40, 30, { width: 45 });
+        }
+
+        if (fs.existsSync(sigLogo)) {
+          doc.image(sigLogo, 510, 30, { width: 40 });
+        }
+
+        doc
+          .font("Helvetica-Bold")
+          .fontSize(16)
+          .text("SISTEM MONITORING MAGANG", { align: "center" })
+          .fontSize(14)
+          .text("Laporan Aktivitas Logbook", { align: "center" })
+          .moveDown(2);
+
+        doc
+          .moveTo(40, 90)
+          .lineTo(552, 90)
+          .lineWidth(0.5)
+          .strokeColor("#e0e0e0")
+          .stroke();
+      };
+
+      createHeader();
+
+      // Add metadata
       doc
-        .font("Helvetica-Bold")
-        .fontSize(16)
-        .text("LAPORAN LOGBOOK AKTIVITAS", { align: "center" });
-      doc.moveDown();
+        .font("Helvetica")
+        .fontSize(10)
+        .fillColor("#444444")
+        .text(`Nama: ${userInfo[0].mahasiswa_nama}`, 40, 120)
+        .text(`NIM: ${userInfo[0].nim}`)
+        .text(`Institusi: ${userInfo[0].institusi}`)
+        .moveDown();
 
-      // Add student info
-      doc.font("Helvetica").fontSize(12);
-      doc.text(`Nama: ${userInfo[0].mahasiswa_nama}`);
-      doc.text(`NIM: ${userInfo[0].nim}`);
-      doc.text(`Institusi: ${userInfo[0].institusi}`);
-      doc.moveDown();
-
-      // Create table
-      let tableTop = 150;
-      let colWidths = {
+      // Table configuration
+      const startX = 40;
+      const colWidths = {
         no: 30,
         tanggal: 80,
         aktivitas: 220,
@@ -538,13 +581,13 @@ const logbookController = {
         status: 100,
       };
 
-      // Draw table headers
-      let yPos = tableTop;
-      let xPos = 50;
+      // Initialize table position
+      let yPos = doc.y;
+      let xPos = startX;
 
-      // Headers with bold font
+      // Draw table headers with background
       doc.font("Helvetica-Bold");
-      let headers = {
+      const headers = {
         No: colWidths.no,
         Tanggal: colWidths.tanggal,
         Aktivitas: colWidths.aktivitas,
@@ -552,56 +595,97 @@ const logbookController = {
         Status: colWidths.status,
       };
 
-      for (let [title, width] of Object.entries(headers)) {
-        doc.rect(xPos, yPos, width, 20).stroke();
-        doc.text(title, xPos + 5, yPos + 5);
+      // Calculate total width
+      const totalWidth = Object.values(colWidths).reduce((a, b) => a + b, 0);
+
+      // Header background
+      doc
+        .fillColor("#f3f4f6")
+        .rect(xPos, yPos, totalWidth, 20)
+        .fill();
+
+      // Header text
+      doc.fillColor("#444444");
+      Object.entries(headers).forEach(([title, width]) => {
+        doc.text(title, xPos + 2, yPos + 5, {
+          width: width - 4,
+          align: "center",
+        });
         xPos += width;
-      }
+      });
 
-      // Content with regular font
-      doc.font("Helvetica");
+      // Reset position for content
       yPos += 20;
+      doc.font("Helvetica").fontSize(9);
 
-      // Add table content
+      // Content with regular font and alternating backgrounds
       logbooks.forEach((log, index) => {
-        let rowHeight = Math.max(
-          doc.heightOfString(log.aktivitas, {
-            width: colWidths.aktivitas - 10,
-            align: "left",
-          }),
-          20
-        );
+        const textHeight = doc.heightOfString(log.aktivitas, {
+          width: colWidths.aktivitas - 10,
+          align: "left",
+        });
+        const rowHeight = Math.max(textHeight, 20);
 
-        // Add new page if needed
-        if (yPos + rowHeight > doc.page.height - 100) {
+        // Check if new page is needed
+        if (yPos + rowHeight > 700) {
           doc.addPage();
-          yPos = 50;
+          createHeader();
+          yPos = 150;
         }
 
-        // Reset x position for new row
-        xPos = 50;
+        xPos = startX;
 
-        // Draw cells for each column
-        doc.rect(xPos, yPos, colWidths.no, rowHeight).stroke();
-        doc.text((index + 1).toString(), xPos + 5, yPos + 5);
+        // Alternate row backgrounds
+        if (index % 2 === 0) {
+          doc
+            .fillColor("#fafafa")
+            .rect(xPos, yPos, totalWidth, rowHeight)
+            .fill();
+        }
+
+        doc.fillColor("#444444");
+
+        // Draw cells
+        doc.text((index + 1).toString(), xPos + 2, yPos + 5, {
+          width: colWidths.no - 4,
+          align: "center",
+        });
         xPos += colWidths.no;
 
-        doc.rect(xPos, yPos, colWidths.tanggal, rowHeight).stroke();
-        doc.text(log.tanggal_formatted, xPos + 5, yPos + 5);
+        doc.text(log.tanggal_formatted, xPos + 2, yPos + 5, {
+          width: colWidths.tanggal - 4,
+          align: "left",
+        });
         xPos += colWidths.tanggal;
 
-        doc.rect(xPos, yPos, colWidths.aktivitas, rowHeight).stroke();
-        doc.text(log.aktivitas, xPos + 5, yPos + 5, {
-          width: colWidths.aktivitas - 10,
+        doc.text(log.aktivitas, xPos + 2, yPos + 5, {
+          width: colWidths.aktivitas - 4,
+          align: "left",
         });
         xPos += colWidths.aktivitas;
 
-        doc.rect(xPos, yPos, colWidths.progress, rowHeight).stroke();
-        doc.text(`${log.progress}%`, xPos + 5, yPos + 5);
+        doc.text(`${log.progress}%`, xPos + 2, yPos + 5, {
+          width: colWidths.progress - 4,
+          align: "center",
+        });
         xPos += colWidths.progress;
 
-        doc.rect(xPos, yPos, colWidths.status, rowHeight).stroke();
-        doc.text(log.status_text, xPos + 5, yPos + 5);
+        const statusColors = {
+          Disetujui: { bg: "#e8f5e9", text: "#1a8754" },
+          Menunggu: { bg: "#fff3e0", text: "#fd7e14" },
+          Ditolak: { bg: "#fee2e2", text: "#dc3545" }
+        };
+
+        const color = statusColors[log.status_text] || { bg: "#f3f4f6", text: "#444444" };
+        doc
+          .fillColor(color.bg)
+          .roundedRect(xPos + 5, yPos + 2, colWidths.status - 10, rowHeight - 4, 3)
+          .fill()
+          .fillColor(color.text)
+          .text(log.status_text, xPos, yPos + 5, {
+            width: colWidths.status,
+            align: "center",
+          });
 
         yPos += rowHeight;
       });
@@ -614,56 +698,90 @@ const logbookController = {
         year: "numeric",
       });
 
-      doc.text(`Padang, ${signatureDate}`, 350, yPos);
-      yPos += 20;
-      doc.text("Pembimbing Lapangan,", 350, yPos);
+      doc.font("Helvetica")
+        .fontSize(10)
+        .fillColor("#444444")
+        .text(`Padang, ${signatureDate}`, 400, yPos)
+        .text("Pembimbing Lapangan,", 402, yPos + 20);
 
-      // Add paraf with proper path handling
+      yPos += 40;
+
+      // Add paraf with proper buffer handling
       if (userInfo[0].paraf_image) {
         try {
-          yPos += 20;
+          const parafImagePath = Buffer.isBuffer(userInfo[0].paraf_image) 
+            ? userInfo[0].paraf_image.toString('utf8')
+            : userInfo[0].paraf_image;
 
-          // Construct absolute path to paraf
-          let parafPath = path.join(process.cwd(), userInfo[0].paraf_image);
+          console.log("Paraf image path from DB:", parafImagePath);
+          const parafPath = path.join(process.cwd(), parafImagePath);
           console.log("Full paraf path:", parafPath);
 
           if (fs.existsSync(parafPath)) {
-            doc.image(parafPath, 350, yPos, {
+            doc.image(parafPath, 405, yPos, {
               fit: [100, 50],
               align: "center",
-              valign: "center",
+              valign: "center"
             });
             yPos += 50;
             console.log("Paraf added successfully");
           } else {
             console.log("Paraf file not found at:", parafPath);
+            doc.text("(Paraf Digital)", 400, yPos);
             yPos += 30;
-            doc.text("(Paraf Digital)", 350, yPos);
           }
         } catch (error) {
-          console.error("Error adding paraf:", error);
-          console.error("Error details:", {
-            message: error.message,
-            stack: error.stack,
+          console.error("Error adding paraf:", {
+            error: error.message,
             parafImage: userInfo[0].paraf_image,
+            parafImageType: typeof userInfo[0].paraf_image,
+            isBuffer: Buffer.isBuffer(userInfo[0].paraf_image)
           });
+          doc.text("(Paraf Digital)", 400, yPos);
           yPos += 30;
-          doc.text("(Paraf Digital)", 350, yPos);
         }
+      } else {
+        console.log("No paraf_image found for admin:", userInfo[0].admin_nama);
+        doc.text("(Paraf Digital)", 400, yPos);
+        yPos += 30;
       }
 
       // Add admin name
-      yPos += 10;
-      doc.text(userInfo[0].admin_nama, 350, yPos);
+      doc.font("Helvetica")
+        .fontSize(10)
+        .fillColor("#444444")
+        .text(userInfo[0].admin_nama, 415, yPos + 10);
+
+      // Add footer
+      const range = doc.bufferedPageRange();
+      for (let i = range.start; i < range.start + range.count; i++) {
+        doc.switchToPage(i);
+        
+        doc.moveTo(40, doc.page.height - 50)
+          .lineTo(552, doc.page.height - 50)
+          .lineWidth(0.5)
+          .strokeColor("#e0e0e0")
+          .stroke();
+
+        doc.fontSize(8)
+          .fillColor("#444444")
+          .text(
+            `PT Semen Padang - Sistem Monitoring Magang | Halaman ${i + 1} dari ${range.count}`,
+            40,
+            doc.page.height - 35,
+            { align: "center" }
+          );
+      }
 
       // Finalize PDF
       doc.end();
+
     } catch (error) {
       console.error("Error in downloadLogbook:", error);
       if (!res.headersSent) {
         res.status(500).json({
           success: false,
-          message: error.message || "Terjadi kesalahan saat mengunduh logbook",
+          message: error.message || "Terjadi kesalahan saat mengunduh logbook"
         });
       }
     } finally {
@@ -926,8 +1044,6 @@ const logbookController = {
       connection.release();
     }
   },
-
-  // Add to logbookController.js
 
   getLogbookStatusStats: async (req, res) => {
     const connection = await db.getConnection();

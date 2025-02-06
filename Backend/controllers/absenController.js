@@ -6,7 +6,7 @@ const path = require("path");
 const fs = require("fs");
 
 const absenController = {
-   scanQR: async (req, res) => {
+  scanQR: async (req, res) => {
     const connection = await db.getConnection();
     try {
       await connection.beginTransaction();
@@ -15,6 +15,8 @@ const absenController = {
       // Validate QR code
       const validationResult = qrcodeUtil.validateQRContent(qrData);
       if (!validationResult.isValid) {
+        // Tambahkan header untuk memainkan suara error
+        res.setHeader('X-Play-Sound', 'error');
         return res.status(400).json({
           success: false,
           message: validationResult.message,
@@ -30,6 +32,8 @@ const absenController = {
       );
   
       if (mahasiswa.length === 0) {
+        // Tambahkan header untuk memainkan suara error
+        res.setHeader('X-Play-Sound', 'error');
         return res.status(404).json({
           success: false,
           message: "Mahasiswa tidak ditemukan atau tidak aktif",
@@ -42,6 +46,8 @@ const absenController = {
       );
   
       if (settings.length === 0) {
+        // Tambahkan header untuk memainkan suara error
+        res.setHeader('X-Play-Sound', 'error');
         return res.status(400).json({
           success: false,
           message: "Pengaturan absensi belum dikonfigurasi",
@@ -109,6 +115,8 @@ const absenController = {
   
         await connection.commit();
         
+        // Tambahkan header untuk memainkan suara sukses
+        res.setHeader('X-Play-Sound', 'success');
         return res.json({
           success: true,
           message: "Absen masuk berhasil",
@@ -121,8 +129,20 @@ const absenController = {
           },
         });
       } else {
+        // Check if already checked out
+        if (existingAbsensi[0].waktu_keluar !== null) {
+          // Tambahkan header untuk memainkan suara error
+          res.setHeader('X-Play-Sound', 'error');
+          return res.status(400).json({
+            success: false,
+            message: "Anda sudah absen pulang",
+          });
+        }
+
         // Check if can check out
         if (currentTime < setting.jam_pulang) {
+          // Tambahkan header untuk memainkan suara error
+          res.setHeader('X-Play-Sound', 'error');
           return res.status(400).json({
             success: false,
             message: "Belum waktunya pulang",
@@ -141,6 +161,8 @@ const absenController = {
   
         await connection.commit();
         
+        // Tambahkan header untuk memainkan suara sukses
+        res.setHeader('X-Play-Sound', 'success');
         return res.json({
           success: true,
           message: "Absen pulang berhasil",
@@ -155,6 +177,8 @@ const absenController = {
     } catch (error) {
       await connection.rollback();
       console.error("Scan QR error:", error);
+      // Tambahkan header untuk memainkan suara error
+      res.setHeader('X-Play-Sound', 'error');
       res.status(500).json({
         success: false,
         message: "Terjadi kesalahan saat proses absensi",

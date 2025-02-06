@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import QrScanner from "react-qr-scanner";
 import { useNavigate } from "react-router-dom";
 import { CircularProgress } from "@mui/material";
@@ -9,6 +9,36 @@ import Logo from "../Elements/Logo/Logo";
 function ScanQr() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+
+  // Menggunakan Web Audio API untuk membuat suara notifikasi
+  const playSound = (type) => {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    if (type === 'success') {
+      // Suara sukses - nada tinggi pendek
+      oscillator.frequency.setValueAtTime(880, audioContext.currentTime); // Nada A5
+      gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.1);
+    } else if (type === 'error') {
+      // Suara error - nada rendah
+      oscillator.frequency.setValueAtTime(220, audioContext.currentTime); // Nada A3
+      gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+      oscillator.start(audioContext.currentTime);
+      oscillator.stop(audioContext.currentTime + 0.2);
+    }
+
+    // Membersihkan resources
+    setTimeout(() => {
+      gainNode.disconnect();
+      oscillator.disconnect();
+    }, 1000);
+  };
 
   const handleScan = async (data) => {
     if (data && !isLoading && data.text) {
@@ -43,99 +73,171 @@ function ScanQr() {
           body: JSON.stringify(requestData),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Gagal memproses absensi");
-        }
-
         const result = await response.json();
 
-        if (result.success) {
-          const alertContent = createAlertContent(result.data);
-          
-          await Swal.fire({
-            title: `<div class="text-2xl font-bold mb-4">Absensi ${
-              result.data.type === "masuk" ? "Masuk" : "Pulang"
-            } Berhasil! 🎉</div>`,
-            html: alertContent,
-            icon: "success",
-            showConfirmButton: true,
-            confirmButtonText: "Selesai",
-            confirmButtonColor: "#10B981",
-            allowOutsideClick: false,
-          });
+        if (!response.ok) {
+          throw new Error(result.message || "Gagal memproses absensi");
+        }
 
+        if (result.success) {
+          playSound('success');
+          await showSuccessAlert(result.data);
           window.location.reload();
         }
       } catch (error) {
-        await Swal.fire({
-          title: "Gagal!",
-          text: error.message,
-          icon: "error",
-          confirmButtonColor: "#EF4444",
-        });
+        playSound('error');
+        await showErrorAlert(error.message);
       } finally {
         setIsLoading(false);
       }
     }
   };
 
-  const createAlertContent = (data) => {
-    const commonContent = `
-      <div class="bg-gray-50 p-6 rounded-lg shadow-sm">
-        <div class="space-y-3">
-          <div class="flex items-center border-b border-gray-200 pb-3">
-            <div class="w-24 text-gray-600">Nama</div>
-            <div class="flex-1 font-medium">${data.nama}</div>
-          </div>
-          <div class="flex items-center border-b border-gray-200 pb-3">
-            <div class="w-24 text-gray-600">Waktu</div>
-            <div class="flex-1 font-medium">${data.waktu}</div>
-          </div>
-    `;
+  const showSuccessAlert = async (data) => {
+    const timeString = new Date().toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    });
 
-    const statusContent = data.type === "masuk" ? `
-      <div class="flex items-center border-b border-gray-200 pb-3">
-        <div class="w-24 text-gray-600">Status</div>
-        <div class="flex-1">
-          <span class="px-3 py-1 ${
-            data.status === "tepat_waktu"
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          } rounded-full text-sm font-medium">
-            ${data.status === "tepat_waktu" ? "Tepat Waktu" : "Telat"}
-          </span>
-        </div>
-      </div>
-    ` : "";
+    await Swal.fire({
+      html: `
+        <div class="max-w-md mx-auto">
+          <div class="mb-6 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-100 mb-4">
+              <svg class="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+              </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">
+              Absensi ${data.type === "masuk" ? "Masuk" : "Pulang"} Berhasil!
+            </h2>
+            <p class="text-gray-600">
+              ${new Date().toLocaleDateString('id-ID', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+          </div>
 
-    return `
-      ${commonContent}
-      ${statusContent}
-      <div class="flex items-center">
-        <div class="w-24 text-gray-600">Lokasi</div>
-        <div class="flex-1">
-          <span class="px-3 py-1 ${
-            data.dalam_radius
-              ? "bg-green-100 text-green-800"
-              : "bg-red-100 text-red-800"
-          } rounded-full text-sm font-medium">
-            ${data.dalam_radius ? "Dalam radius" : "Di luar radius"}
-          </span>
+          <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div class="p-4 space-y-4">
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Nama</span>
+                <span class="font-semibold text-gray-900">${data.nama}</span>
+              </div>
+              
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Waktu</span>
+                <span class="font-semibold text-gray-900">${timeString} WIB</span>
+              </div>
+
+              ${data.type === "masuk" ? `
+                <div class="flex items-center justify-between py-2">
+                  <span class="text-gray-600">Status</span>
+                  <span class="px-3 py-1 rounded-full text-sm font-medium ${
+                    data.status === "tepat_waktu"
+                      ? "bg-green-100 text-green-800"
+                      : "bg-red-100 text-red-800"
+                  }">
+                    ${data.status === "tepat_waktu" ? "Tepat Waktu" : "Terlambat"}
+                  </span>
+                </div>
+              ` : ''}
+
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Lokasi</span>
+                <span class="px-3 py-1 rounded-full text-sm font-medium ${
+                  data.dalam_radius
+                    ? "bg-green-100 text-green-800"
+                    : "bg-red-100 text-red-800"
+                }">
+                  ${data.dalam_radius ? "Dalam Radius" : "Di Luar Radius"}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
-  </div>`;
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'Selesai',
+      confirmButtonColor: '#10B981',
+      allowOutsideClick: false,
+      customClass: {
+        popup: 'rounded-lg',
+        confirmButton: 'px-6 py-2.5 text-sm font-medium rounded-lg transition-colors'
+      }
+    });
+  };
+
+  const showErrorAlert = async (message) => {
+    await Swal.fire({
+      html: `
+        <div class="max-w-md mx-auto">
+          <div class="mb-6 text-center">
+            <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-100 mb-4">
+              <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+              </svg>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 mb-2">
+              Gagal Melakukan Absensi
+            </h2>
+            <p class="text-gray-600">
+              ${new Date().toLocaleDateString('id-ID', { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric' 
+              })}
+            </p>
+          </div>
+  
+          <div class="bg-white rounded-lg border border-gray-200 shadow-sm">
+            <div class="p-4 space-y-4">
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Waktu</span>
+                <span class="font-semibold text-gray-900">
+                  ${new Date().toLocaleTimeString('id-ID', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false
+                  })} WIB
+                </span>
+              </div>
+  
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Status</span>
+                <span class="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800">
+                  Gagal
+                </span>
+              </div>
+  
+              <div class="flex items-center justify-between py-2">
+                <span class="text-gray-600">Keterangan</span>
+                <span class="text-right text-red-600 font-medium max-w-[200px]">${message}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      `,
+      showConfirmButton: true,
+      confirmButtonText: 'Tutup',
+      confirmButtonColor: '#EF4444',
+      allowOutsideClick: false,
+      customClass: {
+        popup: 'rounded-lg',
+        confirmButton: 'px-6 py-2.5 text-sm font-medium rounded-lg transition-colors'
+      }
+    });
   };
 
   const handleError = async (err) => {
     console.error("Camera error:", err);
-    await Swal.fire({
-      title: "Error!",
-      text: "Gagal mengakses kamera. Pastikan kamera dalam keadaan aktif.",
-      icon: "error",
-      confirmButtonColor: "#EF4444",
-    });
+    playSound('error');
+    await showErrorAlert("Gagal mengakses kamera. Pastikan kamera dalam keadaan aktif.");
   };
 
   return (

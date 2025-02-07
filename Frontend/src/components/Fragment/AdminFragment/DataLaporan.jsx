@@ -7,26 +7,30 @@ import {
   ChevronLeft, 
   ChevronRight,
   File,
-  FileCheck
+  FileCheck,
+  Loader2,
+  AlertCircle 
 } from "lucide-react";
 import { format } from 'date-fns';
 import { id } from 'date-fns/locale';
 import Swal from 'sweetalert2';
 
 // Reject Modal Component
-const Reject = ({ isOpen, onClose, onSubmit, report }) => {
+const RejectModal = ({ isOpen, onClose, onSubmit, report }) => {
   const [feedback, setFeedback] = useState("");
   const [file, setFile] = useState(null);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (!feedback.trim()) return;
     
+    setLoading(true);
     try {
       await onSubmit({ feedback, file });
       setFeedback("");
       setFile(null);
+      onClose();
     } catch (error) {
       console.error("Error in reject submission:", error);
     } finally {
@@ -37,14 +41,14 @@ const Reject = ({ isOpen, onClose, onSubmit, report }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg w-full max-w-2xl">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold">Alasan Penolakan</h2>
+          <h2 className="text-2xl font-semibold text-gray-900">Alasan Penolakan</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <X size={24} />
           </button>
@@ -52,32 +56,34 @@ const Reject = ({ isOpen, onClose, onSubmit, report }) => {
 
         {/* Content */}
         <div className="p-6">
-          {/* Student Info Grid */}
+          {/* Student Info */}
           <div className="bg-gray-50 rounded-lg p-6 mb-6">
             <div className="grid grid-cols-2 gap-x-12 gap-y-4">
               <div>
-                <label className="text-gray-500 text-sm block mb-1">Mahasiswa:</label>
-                <span className="text-gray-900 text-lg">{report?.mahasiswa_nama}</span>
+                <label className="text-gray-500 text-sm block mb-1">Mahasiswa</label>
+                <span className="text-gray-900 font-medium">{report?.mahasiswa_nama}</span>
               </div>
               <div>
-                <label className="text-gray-500 text-sm block mb-1">NIM:</label>
-                <span className="text-gray-900 text-lg">{report?.nim}</span>
+                <label className="text-gray-500 text-sm block mb-1">NIM</label>
+                <span className="text-gray-900 font-medium">{report?.nim}</span>
               </div>
               <div>
-                <label className="text-gray-500 text-sm block mb-1">Versi:</label>
-                <span className="text-gray-900 text-lg">{report?.versi}</span>
+                <label className="text-gray-500 text-sm block mb-1">Versi</label>
+                <span className="text-gray-900 font-medium">{report?.versi}</span>
               </div>
               <div>
-                <label className="text-gray-500 text-sm block mb-1">Tanggal Submit:</label>
-                <span className="text-gray-900 text-lg">{format(new Date(report?.created_at), 'd/M/yyyy')}</span>
+                <label className="text-gray-500 text-sm block mb-1">Tanggal Submit</label>
+                <span className="text-gray-900 font-medium">
+                  {format(new Date(report?.created_at), 'd MMMM yyyy', { locale: id })}
+                </span>
               </div>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div>
               <label className="block mb-2">
-                <span className="text-gray-700 text-lg">Feedback</span>
+                <span className="text-gray-700 font-medium">Feedback</span>
                 <span className="text-red-500 ml-1">*</span>
               </label>
               <textarea
@@ -90,22 +96,20 @@ const Reject = ({ isOpen, onClose, onSubmit, report }) => {
               />
             </div>
 
-            <div className="mb-6">
+            <div>
               <label className="block mb-2">
-                <span className="text-gray-700 text-lg">File Revisi (Opsional)</span>
+                <span className="text-gray-700 font-medium">File Revisi (Opsional)</span>
               </label>
               <div className="mt-1">
-                <label className="w-full flex items-center px-4 py-3 rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50">
+                <label className="flex items-center px-4 py-3 rounded-lg border border-gray-300 cursor-pointer hover:bg-gray-50 transition-colors">
                   <input
                     type="file"
                     onChange={(e) => setFile(e.target.files[0])}
                     className="hidden"
                     accept=".pdf,.doc,.docx"
                   />
-                  <span className="inline-flex rounded-md shadow-sm">
-                    <span className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md">
-                      Choose File
-                    </span>
+                  <span className="px-3 py-2 text-sm font-medium bg-white border border-gray-300 rounded-md">
+                    Choose File
                   </span>
                   <span className="ml-3 text-sm text-gray-600">
                     {file ? file.name : 'No file chosen'}
@@ -121,17 +125,24 @@ const Reject = ({ isOpen, onClose, onSubmit, report }) => {
               <button
                 type="button"
                 onClick={onClose}
-                className="px-6 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg text-lg font-medium transition-colors"
+                className="px-6 py-2.5 text-gray-700 bg-gray-50 hover:bg-gray-100 rounded-lg font-medium transition-colors"
                 disabled={loading}
               >
                 Batal
               </button>
               <button
                 type="submit"
-                className="px-6 py-2.5 bg-red-600 text-white rounded-lg text-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
+                className="px-6 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
                 disabled={loading}
               >
-                {loading ? "Mengirim..." : "Kirim Feedback"}
+                {loading ? (
+                  <div className="flex items-center">
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Mengirim...
+                  </div>
+                ) : (
+                  "Kirim Feedback"
+                )}
               </button>
             </div>
           </form>
@@ -256,7 +267,7 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
         confirmButtonText: 'Ya, Setujui',
         cancelButtonText: 'Batal',
         confirmButtonColor: '#10B981',
-        cancelButtonColor: '#EF4444'
+        cancelButtonColor: '#6B7280'
       });
 
       if (result.isConfirmed) {
@@ -397,13 +408,11 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow">
-        <div className="animate-pulse">
-          <div className="h-16 bg-gray-100"></div>
-          <div className="p-4 space-y-3">
-            {[...Array(5)].map((_, index) => (
-              <div key={index} className="h-20 bg-gray-100 rounded"></div>
-            ))}
+      <div className="bg-white rounded-lg shadow-md p-8">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+            <p className="text-gray-600">Memuat data laporan...</p>
           </div>
         </div>
       </div>
@@ -411,170 +420,178 @@ function DataLaporan({ filters = {}, onSelectionChange }) {
   }
 
   return (
-    <div className="bg-white rounded-lg shadow overflow-hidden">
+    <div className="bg-white rounded-lg shadow-md overflow-hidden">
       {error && (
-        <div className="p-4 bg-red-100 border-l-4 border-red-500 text-red-700">
-        {error}
-      </div>
-    )}
-    
-    <div className="overflow-x-auto">
-      <table className="w-full whitespace-nowrap">
-        <thead className="bg-gray-50 border-b border-gray-200">
-          <tr>
-            <th className="p-4">
-              <input
-                type="checkbox"
-                checked={selectedItems.length === reports.length && reports.length > 0}
-                onChange={handleSelectAll}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-            </th>
-            <th className="text-left p-4 font-medium text-gray-600">Mahasiswa</th>
-            <th className="text-left p-4 font-medium text-gray-600">Tanggal Submit</th>
-            <th className="text-left p-4 font-medium text-gray-600">Versi</th>
-            <th className="text-left p-4 font-medium text-gray-600">Progress</th>
-            <th className="text-left p-4 font-medium text-gray-600">Status</th>
-            <th className="text-left p-4 font-medium text-gray-600">Dokumen</th>
-            <th className="text-left p-4 font-medium text-gray-600">Aksi</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-200">
-          {reports.length === 0 ? (
+        <div className="p-4 bg-red-50 border-l-4 border-red-500">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-400" />
+            <p className="ml-3 text-sm text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
+      
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-200">
             <tr>
-              <td colSpan="8" className="text-center py-8 text-gray-500">
-                Tidak ada data laporan
-              </td>
+              <th className="w-8 px-6 py-4">
+                <input
+                  type="checkbox"
+                  checked={selectedItems.length === reports.length && reports.length > 0}
+                  onChange={handleSelectAll}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+              </th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Mahasiswa</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Tanggal Submit</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Versi</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Progress</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Status</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Dokumen</th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-600">Aksi</th>
             </tr>
-          ) : (
-            reports.map((report) => (
-              <tr key={report.id} className="hover:bg-gray-50">
-                <td className="p-4">
-                  <input
-                    type="checkbox"
-                    checked={selectedItems.includes(report.id)}
-                    onChange={() => handleSelectItem(report.id)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                </td>
-                <td className="p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                      <span className="text-blue-600 font-medium">
-                        {report.mahasiswa_nama?.charAt(0)}
-                      </span>
-                    </div>
-                    <div>
-                      <div className="font-medium text-gray-900">{report.mahasiswa_nama}</div>
-                      <div className="text-gray-500 text-sm">{report.nim}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="p-4 text-gray-600">{formatDate(report.created_at)}</td>
-                <td className="p-4 text-gray-900 font-medium">{report.versi}</td>
-                <td className="p-4 text-gray-600 font-medium">
-                  {report.progress || 0}%
-                </td>
-                <td className="p-4">{getStatusBadge(report.status)}</td>
-                <td className="p-4">
-                  <div className="flex space-x-2">
-                    {report.file_path && (
-                      <button
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-2 transition-colors"
-                        onClick={() => handleDownload(report.file_path, `Laporan_${report.versi}.pdf`)}
-                      >
-                        <File size={18} />
-                        <span className="text-sm">Laporan</span>
-                      </button>
-                    )}
-                    {report.file_revisi_path && (
-                      <button
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-2 transition-colors"
-                        onClick={() => handleDownload(report.file_revisi_path, `Revisi_${report.versi}.pdf`)}
-                      >
-                        <FileCheck size={18} />
-                        <span className="text-sm">Revisi</span>
-                      </button>
-                    )}
-                  </div>
-                </td>
-                <td className="p-4">
-                  <div className="flex gap-2">
-                    {report.status === 'pending_review' && (
-                      <>
-                        <button
-                          onClick={() => handleApprove(report.id)}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                          title="Setujui"
-                        >
-                          <Check size={18} />
-                        </button>
-                        <button
-                          onClick={() => handleReject(report)}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Tolak"
-                        >
-                          <X size={18} />
-                        </button>
-                      </>
-                    )}
-                  </div>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {reports.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="px-6 py-8 text-center text-gray-500">
+                  Tidak ada data laporan
                 </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
-    </div>
+            ) : (
+              reports.map((report) => (
+                <tr key={report.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.includes(report.id)}
+                      onChange={() => handleSelectItem(report.id)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                        <span className="text-blue-600 font-medium">
+                          {report.mahasiswa_nama?.charAt(0)}
+                        </span>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-900">{report.mahasiswa_nama}</div>
+                        <div className="text-sm text-gray-500">{report.nim}</div>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-gray-600">{formatDate(report.created_at)}</td>
+                  <td className="px-6 py-4 font-medium text-gray-900">{report.versi}</td>
+                  <td className="px-6 py-4 text-gray-600">
+                    {report.progress || 0}%
+                  </td>
+                  <td className="px-6 py-4">{getStatusBadge(report.status)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      {report.file_path && (
+                        <button
+                          onClick={() => handleDownload(report.file_path, `Laporan_${report.versi}.pdf`)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-2 transition-colors"
+                          title="Download Laporan"
+                        >
+                          <File size={18} />
+                          <span className="text-sm">Laporan</span>
+                        </button>
+                      )}
+                      {report.file_revisi_path && (
+                        <button
+                          onClick={() => handleDownload(report.file_revisi_path, `Revisi_${report.versi}.pdf`)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-2 transition-colors"
+                          title="Download File Revisi"
+                        >
+                          <FileCheck size={18} />
+                          <span className="text-sm">Revisi</span>
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex gap-2">
+                      {report.status === 'pending_review' && (
+                        <>
+                          <button
+                            onClick={() => handleApprove(report.id)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                            title="Setujui"
+                          >
+                            <Check size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleReject(report)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Tolak"
+                          >
+                            <X size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
 
-    <div className="p-4 border-t border-gray-200">
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-gray-600">
-          Menampilkan {reports.length} dari {totalItems} data
-        </div>
-        {totalPages > 1 && (
+      {/* Pagination */}
+      <div className="px-6 py-4 border-t border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing {((page - 1) * itemsPerPage) + 1} to {Math.min(page * itemsPerPage, totalItems)} of{" "}
+            {totalItems} entries
+          </div>
           <div className="flex gap-2">
             <button
-              className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              onClick={() => setPage(page - 1)}
+              onClick={() => setPage((prev) => Math.max(prev - 1, 1))}
               disabled={page === 1}
+              className="p-2 border rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft size={20} />
             </button>
             {[...Array(totalPages)].map((_, index) => (
               <button
                 key={index + 1}
-                className={`px-4 py-2 border rounded-lg hover:bg-gray-50 transition-colors ${
-                  page === index + 1 ? 'bg-blue-50 text-blue-600 border-blue-600' : 'text-gray-600'
-                }`}
                 onClick={() => setPage(index + 1)}
+                className={`px-4 py-2 border rounded-lg transition-colors ${
+                  page === index + 1
+                    ? "bg-blue-50 text-blue-600 border-blue-200"
+                    : "text-gray-600 hover:bg-gray-50"
+                }`}
               >
                 {index + 1}
               </button>
             ))}
             <button
-              className="px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              onClick={() => setPage(page + 1)}
+              onClick={() => setPage((prev) => Math.min(prev + 1, totalPages))}
               disabled={page === totalPages}
+              className="p-2 border rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight size={20} />
             </button>
           </div>
-        )}
+        </div>
       </div>
-    </div>
 
-    <Reject
-      isOpen={isRejectOpen}
-      onClose={() => {
-        setIsRejectOpen(false);
-        setSelectedReport(null);
-      }}
-      onSubmit={handleRejectSubmit}
-      report={selectedReport}
-    />
-  </div>
-);
+      {/* Reject Modal */}
+      <RejectModal
+        isOpen={isRejectOpen}
+        onClose={() => {
+          setIsRejectOpen(false);
+          setSelectedReport(null);
+        }}
+        onSubmit={handleRejectSubmit}
+        report={selectedReport}
+      />
+    </div>
+  );
 }
 
 export default DataLaporan;

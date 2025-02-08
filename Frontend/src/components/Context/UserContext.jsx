@@ -12,7 +12,7 @@ export const AuthProvider = ({ children }) => {
   const register = async (registerData) => {
     try {
       const response = await axios.post(`${API_URL}/api/auth/register`, registerData);
-      
+
       if (response.data) {
         await Swal.fire({
           title: 'Berhasil!',
@@ -41,6 +41,7 @@ export const AuthProvider = ({ children }) => {
       throw err.response?.data || { message: 'Gagal memuat daftar admin' };
     }
   };
+  // Add these changes to your AuthProvider component
 
   const refreshProfile = async () => {
     try {
@@ -56,13 +57,20 @@ export const AuthProvider = ({ children }) => {
 
       if (response.data.success) {
         const userData = response.data.data.profile || response.data.data;
+
+        // Handle photo profile URL
         if (userData.photo_profile) {
           const fileName = userData.photo_profile.split('/').pop();
           userData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
         }
-        
+
+        // Handle paraf image URL
+        if (userData.paraf_image) {
+          userData.paraf_image = `${API_URL}/uploads/paraf/${userData.paraf_image.split('/').pop()}`;
+        }
+
         userData.role = user?.role || userData.role;
-        
+
         localStorage.setItem("user", JSON.stringify(userData));
         setUser(userData);
         return response.data;
@@ -73,42 +81,78 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateParaf = async (formData) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) throw new Error("Token not found");
+
+      const response = await axios.put(`${API_URL}/api/admin/paraf`, formData, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        const updatedUser = { ...user };
+        if (response.data.data.paraf_url) {
+          updatedUser.paraf_image = `${API_URL}/uploads/paraf/${response.data.data.paraf_url.split('/').pop()}`;
+        }
+
+        setUser(updatedUser);
+        localStorage.setItem("user", JSON.stringify(updatedUser));
+        return response.data;
+      }
+
+      throw new Error(response.data.message || "Update failed");
+    } catch (error) {
+      console.error('Error updating paraf:', error);
+      throw error.response?.data || { message: "Update paraf error" };
+    }
+  };
+
   const login = async (email, password) => {
     try {
       const loginResponse = await axios.post(`${API_URL}/api/auth/login`, {
         email,
         password
       });
-  
+
       if (loginResponse.data.success) {
         const { token } = loginResponse.data;
         localStorage.setItem("token", token);
         axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
-  
+
         const endpoint = loginResponse.data.user.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
         const profileResponse = await axios.get(`${API_URL}${endpoint}`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
-  
+
         if (profileResponse.data.success) {
           const completeUserData = {
             ...(profileResponse.data.data.profile || profileResponse.data.data),
             role: loginResponse.data.user.role
           };
-  
+
           if (completeUserData.photo_profile) {
             const fileName = completeUserData.photo_profile.split('/').pop();
             completeUserData.photo_profile = `${API_URL}/uploads/profiles/${fileName}`;
           }
-  
+
+          if (completeUserData.paraf_image) {
+            const fileName = completeUserData.paraf_image.split('/').pop();
+            completeUserData.paraf_image = `${API_URL}/uploads/paraf/${fileName}`;
+          }
+
           setUser(completeUserData);
           localStorage.setItem("user", JSON.stringify(completeUserData));
+          await refreshProfile();
           return { success: true, user: completeUserData };
         }
       }
-      
+
       throw new Error(loginResponse.data.message || "Login failed");
     } catch (error) {
       console.error('Login error:', error);
@@ -122,7 +166,7 @@ export const AuthProvider = ({ children }) => {
       if (!token) throw new Error("Token not found");
 
       const endpoint = user?.role === 'admin' ? '/api/admin/profile' : '/api/user/profile';
-      
+
       const response = await axios.put(`${API_URL}${endpoint}`, formData, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -144,7 +188,7 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem("user", JSON.stringify(updatedUser));
         return response.data;
       }
-      
+
       throw new Error(response.data.message || "Update failed");
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -158,7 +202,7 @@ export const AuthProvider = ({ children }) => {
       if (!token) throw new Error("Token not found");
 
       const endpoint = user?.role === 'admin' ? '/api/admin/profile/password' : '/api/user/profile/password';
-      
+
       const response = await axios.put(`${API_URL}${endpoint}`, passwordData, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -187,9 +231,9 @@ export const AuthProvider = ({ children }) => {
 
         if (token && savedUser) {
           axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+          await refreshProfile();
           const parsedUser = JSON.parse(savedUser);
           setUser(parsedUser);
-          await refreshProfile();
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -206,17 +250,16 @@ export const AuthProvider = ({ children }) => {
     const interceptor = axios.interceptors.response.use(
       response => response,
       error => {
-        if (error.response?.status === 401) {
+        if (error.response?.status === 401 && !error.config.url.includes('/profile/password')) {
           logout();
         }
         return Promise.reject(error);
       }
     );
-
-    return () => {
-      axios.interceptors.response.eject(interceptor);
-    };
+  
+    return () => axios.interceptors.response.eject(interceptor);
   }, []);
+
 
   const value = {
     user,
@@ -227,7 +270,8 @@ export const AuthProvider = ({ children }) => {
     updatePassword,
     refreshProfile,
     register,
-    fetchAdminUsers
+    fetchAdminUsers,
+    updateParaf
   };
 
   return (

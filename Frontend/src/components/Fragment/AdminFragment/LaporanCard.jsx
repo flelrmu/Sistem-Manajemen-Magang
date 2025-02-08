@@ -24,7 +24,6 @@ function LaporanCard({ filters = {} }) {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      
       const queryParams = new URLSearchParams(filters).toString();
       const response = await axios.get(
         `http://localhost:3000/api/reports/stats?${queryParams}`,
@@ -50,15 +49,15 @@ function LaporanCard({ filters = {} }) {
   const getIconColor = (title) => {
     switch (title) {
       case "Total Laporan":
-        return "text-blue-600";
+        return "text-blue-600 bg-blue-100";
       case "Disetujui":
-        return "text-green-600";
+        return "text-green-600 bg-green-100";
       case "Pending Review":
-        return "text-yellow-600";
+        return "text-yellow-600 bg-yellow-100";
       case "Perlu Revisi":
-        return "text-red-600";
+        return "text-red-600 bg-red-100";
       default:
-        return "text-gray-600";
+        return "text-gray-600 bg-gray-100";
     }
   };
 
@@ -79,11 +78,12 @@ function LaporanCard({ filters = {} }) {
 
   if (loading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {[1, 2, 3, 4].map((index) => (
-          <div key={index} className="bg-white p-6 rounded-lg shadow animate-pulse">
-            <div className="h-4 bg-gray-200 rounded w-1/2 mb-2"></div>
-            <div className="h-8 bg-gray-200 rounded w-1/4"></div>
+          <div key={index} className="bg-white rounded-xl p-6 shadow-lg animate-pulse">
+            <div className="h-8 w-8 bg-gray-200 rounded mb-4"></div>
+            <div className="h-4 bg-gray-200 rounded w-2/3 mb-2"></div>
+            <div className="h-8 bg-gray-200 rounded w-1/3"></div>
           </div>
         ))}
       </div>
@@ -112,31 +112,40 @@ function LaporanCard({ filters = {} }) {
   return (
     <>
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-xl mb-4">
           {error}
         </div>
       )}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         {statCards.map((stat, index) => (
           <div
             key={index}
-            className="bg-white group rounded-lg p-6 shadow hover:scale-105 duration-500"
+            className="relative overflow-hidden bg-white rounded-xl p-6 shadow-lg transition-all duration-300 hover:shadow-xl border border-gray-100 hover:border-gray-300"
           >
-            <div className="flex items-center gap-3">
-              <div className={getIconColor(stat.title)}>
+            <div className="flex items-start">
+              <div className={`${getIconColor(stat.title)} p-2 rounded-lg`}>
                 {getIcon(stat.title)}
               </div>
-              <div>
-                <h3 className="text-sm font-medium text-gray-600 group-hover:text-red-500 duration-500">
+              <div className="ml-4 flex-1">
+                <h3 className="text-sm font-medium text-gray-600">
                   {stat.title}
                 </h3>
-                <div className="mt-1">
-                  <p className="text-3xl font-semibold text-gray-900">
-                    {stat.value}
-                  </p>
-                </div>
+                <p className="mt-2 text-3xl font-bold tracking-tight text-gray-900">
+                  {stat.value}
+                </p>
               </div>
             </div>
+            <div 
+              className="absolute bottom-0 right-0 h-2 w-2/3 bg-gradient-to-r from-transparent" 
+              style={{
+                backgroundImage: `linear-gradient(to right, transparent, ${
+                  stat.title === "Disetujui" ? '#22c55e' :
+                  stat.title === "Pending Review" ? '#eab308' :
+                  stat.title === "Perlu Revisi" ? '#ef4444' :
+                  '#3b82f6'
+                }1a)`
+              }}
+            />
           </div>
         ))}
       </div>

@@ -1,164 +1,178 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState } from 'react';
+import { Camera } from 'lucide-react';
+import { useAuth } from '../../Context/UserContext';
 
 function UploadParaf() {
-  const [parafUpload, setParafUpload] = useState({
+  const { user, updateParaf } = useAuth();
+  const [parafData, setParafData] = useState({
     selectedFile: null,
     previewUrl: null,
     error: null,
     loading: false,
-    success: false,
+    success: false
   });
-
-  // Fetch initial paraf data
-  useEffect(() => {
-    const fetchParafData = async () => {
-      try {
-        const response = await axios.get("http://localhost:3000/api/admin/profile");
-        if (response.data.success && response.data.data.paraf_image) {
-          setParafUpload((prev) => ({
-            ...prev,
-            previewUrl: `${process.env.REACT_APP_API_URL}/${response.data.data.paraf_image}`,
-          }));
-        }
-      } catch (error) {
-        console.error("Error fetching paraf:", error);
-      }
-    };
-
-    fetchParafData();
-  }, []);
 
   const handleFileChange = (event) => {
     const file = event.target.files[0];
-    if (file && file.type.startsWith("image/")) {
-      const previewUrl = URL.createObjectURL(file);
-      setParafUpload({
-        selectedFile: file,
-        previewUrl: previewUrl,
-        error: null,
-        loading: false,
-        success: false,
-      });
-    } else {
-      setParafUpload({
+    
+    if (!file) return;
+    
+    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+      setParafData(prev => ({
+        ...prev,
         selectedFile: null,
-        previewUrl: null,
-        error: "File harus berupa gambar",
-        loading: false,
-        success: false,
-      });
+        error: "Tipe file tidak diizinkan. Gunakan JPG, JPEG, atau PNG",
+        success: false
+      }));
+      return;
     }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setParafData(prev => ({
+        ...prev,
+        selectedFile: null,
+        error: "File terlalu besar. Maksimal 5MB",
+        success: false
+      }));
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    setParafData(prev => ({
+      ...prev,
+      selectedFile: file,
+      previewUrl: previewUrl,
+      error: null,
+      success: false
+    }));
   };
 
-  const handleParafUpload = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!parafUpload.selectedFile) return;
+    if (!parafData.selectedFile) return;
 
-    setParafUpload((prev) => ({ ...prev, loading: true, error: null }));
+    setParafData(prev => ({ ...prev, loading: true, error: null }));
 
     const formData = new FormData();
-    formData.append("paraf_image", parafUpload.selectedFile);
+    formData.append("paraf_image", parafData.selectedFile);
 
     try {
-      const response = await axios.put("http://localhost:3000/api/admin/paraf", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
-      });
-
-      if (response.data.success) {
-        setParafUpload((prev) => ({
+      const response = await updateParaf(formData);
+      if (response.success) {
+        // Clear preview URL after successful upload
+        if (parafData.previewUrl) {
+          URL.revokeObjectURL(parafData.previewUrl);
+        }
+        
+        setParafData(prev => ({
           ...prev,
           loading: false,
           success: true,
           error: null,
+          selectedFile: null,
+          previewUrl: null
         }));
-        alert("Paraf berhasil diupload");
-      } else {
-        throw new Error(response.data.message || "Gagal mengupload paraf");
       }
     } catch (error) {
       console.error("Upload error:", error);
-      setParafUpload((prev) => ({
+      setParafData(prev => ({
         ...prev,
         error: error.message || "Gagal mengupload paraf",
         loading: false,
-        success: false,
+        success: false
       }));
-
-      if (parafUpload.previewUrl) {
-        URL.revokeObjectURL(parafUpload.previewUrl);
-      }
     }
   };
 
-  // Cleanup
-  useEffect(() => {
-    return () => {
-      if (parafUpload.previewUrl) {
-        URL.revokeObjectURL(parafUpload.previewUrl);
-      }
-    };
-  }, []);
-
   return (
-    <div className="bg-white p-6 rounded-lg shadow mt-8 max-w-3xl">
-      <h3 className="text-lg font-medium mb-4">Upload Paraf</h3>
+    <div className="divide-y divide-gray-100 bg-white rounded-xl shadow">
+      {/* Header */}
+      <div className="px-6 py-5 bg-gray-50 rounded-t-xl">
+        <h2 className="text-lg font-semibold text-gray-900">Upload Paraf</h2>
+        <p className="mt-1 text-sm text-gray-600">
+        </p>
+      </div>
 
-      {parafUpload.error && (
-        <div className="mb-4 p-4 bg-red-50 text-red-600 rounded-md">
-          {parafUpload.error}
+      {/* Alert Messages */}
+      {(parafData.error || parafData.success) && (
+        <div className={`mx-6 my-4 p-4 rounded-xl border ${
+          parafData.success 
+            ? 'bg-green-50 border-green-200 text-green-700' 
+            : 'bg-red-50 border-red-200 text-red-700'
+        }`}>
+          {parafData.error || 'Paraf berhasil diupload!'}
         </div>
       )}
 
-      {parafUpload.success && (
-        <div className="mb-4 p-4 bg-green-50 text-green-600 rounded-md">
-          Paraf berhasil diupload!
-        </div>
-      )}
+      {/* Form Content */}
+      <div className="p-6">
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Paraf Preview */}
+          <div className="flex-none">
+            <p className="text-sm font-medium text-gray-700 mb-3"></p>
+            <div className="relative">
+              <div className="w-40 h-40 rounded-2xl overflow-hidden bg-white border-2 border-gray-200">
+                {(parafData.previewUrl || user?.paraf_image) ? (
+                  <img
+                    src={parafData.previewUrl || user?.paraf_image}
+                    alt="Paraf"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 bg-gray-50">
+                    Belum ada paraf
+                  </div>
+                )}
+              </div>
+              <label className="absolute bottom-3 right-3 p-2.5 bg-white rounded-xl shadow-lg cursor-pointer hover:bg-gray-50 border border-gray-200 group">
+                <Camera size={20} className="text-gray-500 group-hover:text-blue-500" />
+                <input
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/jpg"
+                  onChange={handleFileChange}
+                  disabled={parafData.loading}
+                />
+              </label>
+            </div>
+            <p className="mt-3 text-xs text-gray-500 text-center">
+              Format: JPG, JPEG, PNG<br />Maksimal 5MB
+            </p>
+          </div>
 
-      {parafUpload.previewUrl && (
-        <div className="mb-4">
-          <p className="text-sm text-gray-600 mb-2">Preview Paraf:</p>
-          <img
-            src={parafUpload.previewUrl}
-            alt="Preview Paraf"
-            className="h-20 object-contain border rounded-md"
-          />
-        </div>
-      )}
+          {/* Form Actions */}
+          <div className="flex-1">
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="bg-gray-50 rounded-xl p-5">
+                <p className="text-sm text-gray-600">
+                  Paraf yang Anda upload akan digunakan untuk menandatangani dokumen secara digital. 
+                  Pastikan paraf yang Anda upload jelas dan sesuai dengan paraf asli Anda.
+                </p>
+              </div>
 
-      <form onSubmit={handleParafUpload} className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2">
-            Pilih Gambar Paraf
-          </label>
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleFileChange}
-            className="w-full p-2 border rounded-md"
-            disabled={parafUpload.loading}
-          />
-          <p className="mt-1 text-sm text-gray-500">
-            Format yang didukung: JPG, JPEG, PNG (Max: 5MB)
-          </p>
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={!parafData.selectedFile || parafData.loading}
+                  className="flex items-center px-6 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {parafData.loading ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Mengupload...
+                    </>
+                  ) : (
+                    'Upload Paraf'
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-
-        <button
-          type="submit"
-          disabled={!parafUpload.selectedFile || parafUpload.loading}
-          className={`px-4 py-2 rounded-md text-white transition-colors
-            ${
-              !parafUpload.selectedFile || parafUpload.loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700"
-            }`}
-        >
-          {parafUpload.loading ? "Mengupload..." : "Upload Paraf"}
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

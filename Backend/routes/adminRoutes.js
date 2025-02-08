@@ -121,16 +121,14 @@ router.post('/institutions',
 // Validation code
 router.post('/generate-validation-code', adminController.generateValidationCode);
 
-// Update paraf route
 // Configure multer storage for paraf
 const parafStorage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadPath = 'uploads/paraf/';
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+    const uploadDir = path.join(__dirname, '..', 'uploads', 'paraf');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
-    cb(null, uploadPath);
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -138,8 +136,7 @@ const parafStorage = multer.diskStorage({
   }
 });
 
-// Configure multer upload for paraf
-const uploadParaf = multer({ 
+const uploadParaf = multer({
   storage: parafStorage,
   limits: {
     fileSize: 5 * 1024 * 1024 // 5MB limit
@@ -147,15 +144,13 @@ const uploadParaf = multer({
   fileFilter: function(req, file, cb) {
     const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
     if (!allowedTypes.includes(file.mimetype)) {
-      const error = new Error('Wrong file type');
-      error.code = 'WRONG_FILE_TYPE';
-      return cb(error, false);
+      return cb(new Error('Invalid file type. Only JPG, JPEG, and PNG are allowed.'), false);
     }
     cb(null, true);
   }
 });
 
-// Update paraf route with new configuration
+// Update paraf route
 router.put('/paraf', uploadParaf.single('paraf_image'), async (req, res) => {
   let connection;
   try {
@@ -177,23 +172,15 @@ router.put('/paraf', uploadParaf.single('paraf_image'), async (req, res) => {
     );
 
     // Delete old paraf file if it exists
-    if (rows[0] && rows[0].paraf_image) {
-      const oldParafPath = rows[0].paraf_image.toString();
-      const oldPath = path.join(__dirname, '..', oldParafPath);
-      
+    if (rows[0]?.paraf_image) {
+      const oldPath = path.join(__dirname, '..', 'uploads', 'paraf', rows[0].paraf_image.split('/').pop());
       if (fs.existsSync(oldPath)) {
-        try {
-          fs.unlinkSync(oldPath);
-          console.log('Old paraf deleted successfully');
-        } catch (err) {
-          console.error('Error deleting old paraf:', err);
-        }
+        fs.unlinkSync(oldPath);
       }
     }
 
-    // Store the relative path in database
-    const relativePath = req.file.path.replace(/\\/g, '/');
-    console.log('New paraf path:', relativePath);
+    // Store relative path in database
+    const relativePath = `uploads/paraf/${req.file.filename}`;
 
     await connection.execute(
       'UPDATE admin SET paraf_image = ? WHERE id = ?',
